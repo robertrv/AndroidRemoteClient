@@ -38,7 +38,6 @@ package org.uoc.androidremote.client.vnc;
 import java.awt.*;
 import java.io.*;
 
-// TODO: Auto-generated Javadoc
 //
 // VncCanvas2 is a special version of VncCanvas which may use Java 2 API.
 //

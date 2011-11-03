@@ -56,7 +56,7 @@ public class Client extends JFrame {
 	private static final long serialVersionUID = 1L;
 	
 	/** The vnc viewer. */
-	private final VncViewer vncViewer = new VncViewer();;
+	private final VncViewer vncViewer = new VncViewer();
 	
 	/** The network panel. */
 	private NetworkPanel networkPanel;
@@ -144,9 +144,11 @@ public class Client extends JFrame {
 		manageUSBFunctions(false);
 		
 		// This handler manages all those exceptions which are not explicitly handled
-		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler(){
-			@Override public void uncaughtException(Thread t, Throwable e){
-				String msg="GUI produced an unexpected exception (thread: " + t.getName() + ")";
+		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+			@Override
+			public void uncaughtException(Thread t, Throwable e) {
+				String msg = "GUI produced an unexpected exception (thread: "
+						+ t.getName() + ")";
 				logger.log(Level.WARNING, msg, e);
 				JOptionPane.showMessageDialog(Client.this, e.getMessage());
 			}
@@ -161,7 +163,6 @@ public class Client extends JFrame {
 	 */
 	public static void main(String[] args) {
 		Client c = new Client();
-		
 		c.start();
 
 	}

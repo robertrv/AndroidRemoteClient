@@ -1,3 +1,12 @@
-Workspace del proyecto Java AndroidRemoteClient.
-Esta carpeta contiene el codigo fuente del proyecto.
-Proyecto alojado en http://code.google.com/p/androidremote-client/.
+Workspace for java project named AndroidRemoteClient.
+
+This project is a clone of the original version placed in  http://code.google.com/p/androidremote-client/.
+
+Here we have the Eclipse based project with all the source. Also check http://code.google.com/p/androidremote-server/ or the corresponding github mirror.
+
+Introduction
+============
+
+This project is intended to be an application to show and manage remotely android phones through its interface. 
+
+most of the vnc visualization is based on http://www.tightvnc.com/ 

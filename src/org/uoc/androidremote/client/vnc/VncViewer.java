@@ -43,6 +43,7 @@ package org.uoc.androidremote.client.vnc;
 // a VNC desktop.
 //
 
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -64,9 +65,11 @@ import java.net.UnknownHostException;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class VncViewer.
+ * 
+ * This is responsible to display the result of the Vnc client, as well all the
+ *  button and options to manage it.
  */
 public class VncViewer extends java.applet.Applet implements java.lang.Runnable {
 
@@ -344,14 +347,13 @@ public class VncViewer extends java.applet.Applet implements java.lang.Runnable 
 
 		} catch (NoRouteToHostException e) {
 			System.err.println("Network error: no route to server: " + host + " - " + e.getMessage());
-			showConnectionStatus("Network error: no route to server: " + host);
+			showConnectionStatus("Network error: no route to server: " + host, true);
 		} catch (UnknownHostException e) {
 			System.err.println("Network error: server name unknown: " + host + " - " + e.getMessage());
-			showConnectionStatus("Network error: server name unknown: " + host);
+			showConnectionStatus("Network error: server name unknown: " + host, true);
 		} catch (ConnectException e) {
 			System.err.println("Network error: could not connect to server: " + host + ":" + port + " - " + e.getMessage());
-			showConnectionStatus("Network error: could not connect to server: " + host + ":" + port);
-
+			showConnectionStatus("Network error: could not connect to server: " + host + ":" + port, true);
 		} catch (EOFException e) {
 			if (showOfflineDesktop) {
 				e.printStackTrace();
@@ -534,7 +536,7 @@ public class VncViewer extends java.applet.Applet implements java.lang.Runnable 
 	 * @param msg
 	 *            the msg
 	 */
-	void showConnectionStatus(String msg) {
+	void showConnectionStatus(String msg, boolean... error) {
 		/*
 		 * if (msg == null) { if (vncContainer.isAncestorOf(connStatusLabel)) { vncContainer.remove(connStatusLabel); } connStatusLabel.setText(VNC_STATUS+"desconectado"); return; }
 		 */
@@ -544,6 +546,9 @@ public class VncViewer extends java.applet.Applet implements java.lang.Runnable 
 		 */
 		if (msg != null) {
 			connStatusLabel.setText(VNC_STATUS + msg);
+			if (error != null && error.length > 0 && error[0]) {
+				connStatusLabel.setForeground(Color.RED);				
+			}
 		}
 		// }
 

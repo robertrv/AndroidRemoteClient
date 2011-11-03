@@ -59,7 +59,6 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.zip.Inflater;
 
-// TODO: Auto-generated Javadoc
 //
 // VncCanvas is a subclass of Canvas which draws a VNC desktop on it.
 //
