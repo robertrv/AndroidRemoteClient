@@ -46,9 +46,8 @@ import org.uoc.androidremote.client.ui.USBScreenPanel;
 import org.uoc.androidremote.client.vnc.VncViewer;
 import org.uoc.androidremote.operations.Operation;
 
-// TODO: Auto-generated Javadoc
 /**
- * The Class Client.
+ * Main AndroidRemoteClient class to hold the main window
  */
 public class Client extends JFrame {
 
@@ -149,7 +148,7 @@ public class Client extends JFrame {
 			public void uncaughtException(Thread t, Throwable e) {
 				String msg = "GUI produced an unexpected exception (thread: "
 						+ t.getName() + ")";
-				logger.log(Level.WARNING, msg, e);
+				logger.log(Level.SEVERE, msg, e);
 				JOptionPane.showMessageDialog(Client.this, e.getMessage());
 			}
 		});
@@ -189,13 +188,13 @@ public class Client extends JFrame {
 			available = true;
 		} catch (UnknownHostException e) {
 			System.err.println(e.getMessage());
-			gestionConnStatus.setText(GESTION_STATUS + "error de conexi√≥n");
+			gestionConnStatus.setText(GESTION_STATUS + "error de conexión");
 		} catch (ConnectException e) {
 			gestionConnStatus
 					.setText(GESTION_STATUS + "servidor remoto parado");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
-			gestionConnStatus.setText(GESTION_STATUS + "error de conexi√≥n");
+			gestionConnStatus.setText(GESTION_STATUS + "error de conexión");
 		}
 		return available;
 	}
@@ -253,22 +252,20 @@ public class Client extends JFrame {
 	 * Open connection.
 	 */
 	public void openConnection() {
-		Operation o = new Operation(Operation.OP_OPEN, "Cliente: Angel");
-
-		try {
-			salida.writeObject(o);
-			salida.flush();
-			String response = (String) ins.readObject();
-			System.out.println(response);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		if (salida == null) {
+			throw new IllegalStateException(
+					"Network error, manangment server down!");
 		}
-
+		Operation o = new Operation(Operation.OP_OPEN,
+				"Cliente: AndroidRemoteClient");
+		request(o);
 	}
+	
+	public void closeConnection() {
+		request(new Operation(Operation.OP_CLOSE,
+				"Client: AndroidRemoteClient"));
+	}
+
 
 	/**
 	 * Gets the gestion port.

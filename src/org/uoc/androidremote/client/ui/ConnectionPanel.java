@@ -38,6 +38,8 @@ import com.android.ddmlib.IDevice;
  */
 public class ConnectionPanel extends JPanel {
 
+	private static final String DEFAULT_IP = "127.0.0.1";
+
 	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
 	
@@ -91,7 +93,7 @@ public class ConnectionPanel extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				hostEntry.setText("192.168.1.199");
+				hostEntry.setText(DEFAULT_IP);
 				// portEntry.setText("5901");
 				hostEntry.setEnabled(true);
 			}
@@ -100,7 +102,7 @@ public class ConnectionPanel extends JPanel {
 		this.add(usbConn);
 		this.add(netConn);
 		this.add(new JLabel("Host:"));
-		hostEntry.setText("192.168.1.199");
+		hostEntry.setText(DEFAULT_IP);
 		this.add(hostEntry);
 		this.add(new JLabel("VNC Port:"));
 		portEntry.setText("5901");
@@ -148,18 +150,19 @@ public class ConnectionPanel extends JPanel {
 							client.setDevice(device);
 
 						} catch (Exception e) {
-							// TODO: handle exception
+							throw new RuntimeException(e);
 						}
 					}
 					try {
 						client.initSockets();
 						client.openConnection();
 					} catch (Exception e) {
-						// TODO: handle exception
+						throw new RuntimeException(e);
 					}
 					connected = true;
 					buttonConnect.setText("Desconectar");
 				} else {
+					client.getVncViewer().disconnect();
 					client.getVncViewer().stop();
 					client.manageNetworkFunctions(false);
 					client.manageUSBFunctions(false);

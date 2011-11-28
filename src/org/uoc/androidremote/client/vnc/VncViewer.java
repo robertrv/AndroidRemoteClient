@@ -561,9 +561,6 @@ public class VncViewer extends java.applet.Applet implements java.lang.Runnable 
 		validate();
 	}
 
-	//
-	// Show an authentication panel.
-	//
 
 	/**
 	 * Ask password.
