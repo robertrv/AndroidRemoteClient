@@ -31,12 +31,13 @@ import javax.swing.JTextArea;
 
 import org.uoc.androidremote.client.main.Client;
 import org.uoc.androidremote.operations.AndroidApplication;
-import org.uoc.androidremote.operations.AndroidLocation;
+import org.uoc.androidremote.operations.LocationOperation;
 import org.uoc.androidremote.operations.AndroidRunningApplication;
 import org.uoc.androidremote.operations.AndroidService;
 import org.uoc.androidremote.operations.ApplicationsInstalled;
 import org.uoc.androidremote.operations.ApplicationsRunning;
 import org.uoc.androidremote.operations.Operation;
+import org.uoc.androidremote.operations.Reboot;
 import org.uoc.androidremote.operations.ServicesRunning;
 
 // TODO: Auto-generated Javadoc
@@ -47,53 +48,31 @@ public class NetworkPanel extends JPanel {
 
 	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
-	
-	/** The client. */
 	private final Client client;
-	
-	/** The result area apps inst. */
+
 	private final JTextArea resultAreaAppsInst = new JTextArea(30, 20);
-	
-	/** The result area apps. */
 	private final JTextArea resultAreaApps = new JTextArea(30, 20);
-	
-	/** The result area services. */
 	private final JTextArea resultAreaServices = new JTextArea(30, 20);
-	
-	/** The result location. */
 	private final JLabel resultLocation = new JLabel();
-	
-	/** The result battery. */
+	private final JLabel resultReboot = new JLabel();
 	private final JLabel resultBattery = new JLabel();
 	
-	/** The query apps installed button. */
 	private JButton queryAppsInstalledButton;
 	
-	/** The execute button. */
-	private JButton executeButton;
+	private JButton runningAppsButton;
 	
-	/** The execute services button. */
 	private JButton executeServicesButton;
 	
-	/** The battery button. */
 	private JButton batteryButton;
 	
-	/** The location button. */
 	private JButton locationButton;
+	
+	private JButton rebootButton;
 
-	/** The Constant IMPORTANCE_BACKGROUND. */
 	private static final int IMPORTANCE_BACKGROUND = 400;
-	
-	/** The Constant IMPORTANCE_EMPTY. */
 	private static final int IMPORTANCE_EMPTY = 500;
-	
-	/** The Constant IMPORTANCE_FOREGROUND. */
 	private static final int IMPORTANCE_FOREGROUND = 100;
-	
-	/** The Constant IMPORTANCE_SERVICE. */
 	private static final int IMPORTANCE_SERVICE = 300;
-	
-	/** The Constant IMPORTANCE_VISIBLE. */
 	private static final int IMPORTANCE_VISIBLE = 200;
 	
 	/**
@@ -106,8 +85,7 @@ public class NetworkPanel extends JPanel {
 		this.client = c;
 		this.setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 
-		this.add(new JLabel("Bateria"));
-		batteryButton = new JButton("Consultar");
+		batteryButton = new JButton("Bateria");
 		batteryButton.addActionListener(new ActionListener() {
 
 			@Override
@@ -131,8 +109,7 @@ public class NetworkPanel extends JPanel {
 		resultBattery.setText("");
 		this.add(resultBattery);
 
-		this.add(new JLabel("Posicion"));
-		locationButton = new JButton("Consultar");
+		locationButton = new JButton("Posicion");
 		locationButton.addActionListener(new ActionListener() {
 
 			@Override
@@ -143,11 +120,17 @@ public class NetworkPanel extends JPanel {
 						Operation o = new Operation(Operation.OP_LOCATION_GPS,
 								"");
 
-						AndroidLocation loc = (AndroidLocation) client
+						LocationOperation loc = (LocationOperation) client
 								.request(o);
-						if (loc != null) {
+						if (loc != null && loc.getMessage() == null) {
 							resultLocation.setText("Lat: " + loc.getLatitude()
 									+ " Long: " + loc.getLongitude());
+						} else {
+							String responseText = (loc != null && loc
+									.getMessage() != null) ? loc.getMessage()
+									: "Error trying to get location. ";
+							resultLocation.setToolTipText(responseText);
+							resultLocation.setText(responseText);
 						}
 
 					}
@@ -159,9 +142,45 @@ public class NetworkPanel extends JPanel {
 		this.add(locationButton);
 		resultLocation.setText("");
 		this.add(resultLocation);
+		
+		
+		rebootButton = new JButton("Reiniciar");
+		rebootButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					if (client.initSockets()) {
 
-		this.add(new JLabel("Aplicaciones instaladas"));
-		queryAppsInstalledButton = new JButton("Ejecutar");
+						System.out.println("Servicios");
+
+						Operation o2 = new Operation(Operation.OP_REBOOT, "");
+
+						Reboot result = (Reboot) client
+								.request(o2);
+						
+						if (result != null) {
+							String msg = "Result: ";
+							if (result.getResult()) {
+								msg += "Reboot performed";
+							} else {
+								msg += "Problem while rebooting: "
+										+ result.getProblemMessage();
+							}
+							resultLocation.setText(msg);
+						}
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				
+			}
+		});
+		add(rebootButton);
+		resultReboot.setText("");
+		add(resultReboot);
+
+		queryAppsInstalledButton = new JButton("Aplicaciones instaladas");
 		queryAppsInstalledButton.addActionListener(new ActionListener() {
 
 			@Override
@@ -199,9 +218,8 @@ public class NetworkPanel extends JPanel {
 		JScrollPane resultPaneAppsInst = new JScrollPane(resultAreaAppsInst);
 		this.add(resultPaneAppsInst);
 
-		this.add(new JLabel("Aplicaciones en ejecución"));
-		executeButton = new JButton("Ejecutar");
-		executeButton.addActionListener(new ActionListener() {
+		runningAppsButton = new JButton("Aplicaciones en ejecución");
+		runningAppsButton.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent ev) {
@@ -239,13 +257,11 @@ public class NetworkPanel extends JPanel {
 				}
 			}
 		});
-		this.add(executeButton);
+		this.add(runningAppsButton);
 		JScrollPane resultPaneApps = new JScrollPane(resultAreaApps);
 		this.add(resultPaneApps);
 
-		this.add(new JLabel("Servicios"));
-
-		executeServicesButton = new JButton("Ejecutar");
+		executeServicesButton = new JButton("Servicios");
 		executeServicesButton.addActionListener(new ActionListener() {
 
 			@Override
@@ -280,18 +296,11 @@ public class NetworkPanel extends JPanel {
 				}
 			}
 		});
-		this.add(executeServicesButton);
+		add(executeServicesButton);
 		JScrollPane resultPaneServices = new JScrollPane(resultAreaServices);
-		this.add(resultPaneServices);
+		add(resultPaneServices);
 	}
 	
-	/**
-	 * Gets the importance text.
-	 * 
-	 * @param imp
-	 *            the imp
-	 * @return the importance text
-	 */
 	private String getImportanceText(int imp) {
 		switch (imp) {
 		case IMPORTANCE_BACKGROUND:
@@ -309,17 +318,12 @@ public class NetworkPanel extends JPanel {
 		}
 	}
 	
-	/**
-	 * Manage network functions.
-	 * 
-	 * @param enabled
-	 *            the enabled
-	 */
 	public void manageNetworkFunctions(boolean enabled) {
-		executeButton.setEnabled(enabled);
+		runningAppsButton.setEnabled(enabled);
 		executeServicesButton.setEnabled(enabled);
 		locationButton.setEnabled(enabled);
 		queryAppsInstalledButton.setEnabled(enabled);
 		batteryButton.setEnabled(enabled);
+		rebootButton.setEnabled(enabled);
 	}
 }

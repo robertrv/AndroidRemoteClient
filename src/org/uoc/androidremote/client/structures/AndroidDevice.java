@@ -32,7 +32,6 @@ import com.android.ddmlib.SyncService;
 import com.android.ddmlib.SyncService.ISyncProgressMonitor;
 import com.android.ddmlib.SyncService.SyncResult;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class AndroidDevice.
  */

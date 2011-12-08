@@ -31,7 +31,6 @@ import org.uoc.androidremote.client.screen.GetScreenListener;
 import org.uoc.androidremote.client.screen.JPanelScreen;
 import org.uoc.androidremote.client.screen.ThreadGetScreen;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class USBScreenPanel.
  */

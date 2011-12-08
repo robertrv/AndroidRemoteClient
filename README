@@ -10,3 +10,16 @@ Introduction
 This project is intended to be an application to show and manage remotely android phones through its interface. 
 
 most of the vnc visualization is based on http://www.tightvnc.com/ 
+
+How to make a new release
+=========================
+To prepare a new build we don't have right now a build system to pack everything together, so just use the default eclipse system.
+
+The way to use it is:
+ 1.- Go to Eclispe
+ 2.- Select the project and left click on it.
+ 3.- Go to the export option and select "Runnable JAR File". 
+ 4.- Then select the default options and use a Run configuration which is used to execute current client.
+ 5.- Then try to export it with the default options, and you have a .jar file which can be executed with:
+ 	java -jar <filename>.jar 
+ 	Where <filename>.jar is the name of the jar file you have generated. 

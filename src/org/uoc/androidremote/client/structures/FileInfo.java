@@ -18,9 +18,6 @@ package org.uoc.androidremote.client.structures;
 
 import java.io.File;
 
-
-
-// TODO: Auto-generated Javadoc
 /**
  * The Class FileInfo.
  */

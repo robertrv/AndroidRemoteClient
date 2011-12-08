@@ -29,7 +29,6 @@ import javax.swing.JTextField;
 import org.uoc.androidremote.client.main.Client;
 import org.uoc.androidremote.client.usb.visualization.JFrameExplorer;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class USBPanel.
  */

@@ -27,30 +27,15 @@ import java.io.Serializable;
  */
 public class Operation implements Serializable {
 
-    /** The Constant OP_OPEN. */
     public static final int OP_OPEN = 0;
-    
-    /** The Constant OP_SERVICES_RUNNING. */
     public static final int OP_SERVICES_RUNNING = 1;
-    
-    /** The Constant OP_APPLICATIONS_RUNNING. */
     public static final int OP_APPLICATIONS_RUNNING = 2;
-    
-    /** The Constant OP_LOCATION_GPS. */
     public static final int OP_LOCATION_GPS = 3;
-    
-    /** The Constant OP_CLOSE. */
     public static final int OP_CLOSE = 4;
-    
-    /** The Constant OP_APPLICATIONS_INSTALLED. */
     public static final int OP_APPLICATIONS_INSTALLED = 5;
-    
-    /** The Constant OP_BATTERY_LEVEL. */
     public static final int OP_BATTERY_LEVEL = 6;
+    public static final int OP_REBOOT = 7;
     
-    public static final int OP_REBOOT = 6;
-    
-    /** The Constant serialVersionUID. */
     private static final long serialVersionUID = 1L;
     
     /** The id. */
