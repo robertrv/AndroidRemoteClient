@@ -1,0 +1,8 @@
+build/*
+.codepro
+obj
+gen
+R.java
+*.setup
+bin/*
+*.class
