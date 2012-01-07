@@ -18,6 +18,8 @@ package org.uoc.androidremote.client.ui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -31,6 +33,7 @@ import org.uoc.androidremote.client.structures.AndroidDevice;
 
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.IDevice;
+import com.glavsoft.viewer.ARViewer;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -133,8 +136,21 @@ public class ConnectionPanel extends JPanel {
 						gestionPort = 0;
 					}
 					client.setGestionPort(gestionPort);
-					client.getVncViewer().configure(client.getHost(), port);
-					client.getVncViewer().start();
+					configureConnection(client.getVncViewer(), client.getHost(), port);
+					//client.getVncViewer().configure(client.getHost(), port);
+					/*
+		Parser parser = new Parser();
+		ParametersHandler.completeParserOptions(parser);
+
+		parser.parse(args);
+		if (parser.isSet(ARG_HELP)) {
+			printUsage(parser.optionsUsage());
+			System.exit(0);
+		}
+		ARViewer viewer = new ARViewer(parser);
+		SwingUtilities.invokeLater(viewer);					
+					 */
+					
 					client.manageNetworkFunctions(true);
 
 					if (usbConn.isSelected()) {
@@ -148,7 +164,6 @@ public class ConnectionPanel extends JPanel {
 							device.getDevice().createForward(gestionPort,
 									gestionPort);
 							client.setDevice(device);
-
 						} catch (Exception e) {
 							throw new RuntimeException(e);
 						}
@@ -162,12 +177,40 @@ public class ConnectionPanel extends JPanel {
 					connected = true;
 					buttonConnect.setText("Desconectar");
 				} else {
-					client.getVncViewer().disconnect();
-					client.getVncViewer().stop();
+					client.getVncViewer().stopTasksAndRunNewSession(
+							"Closing connection");
+					//client.getVncViewer().stop(); // TODO R: Review if this is necessary
 					client.manageNetworkFunctions(false);
 					client.manageUSBFunctions(false);
 					buttonConnect.setText("Conectar");
+					connected = false;
 				}
+			}
+
+			/**
+			 * Will prepare the vncViewer to connect to the host and port with
+			 * the default parameters, like scaling factor, color depth and so.
+			 * 
+			 * @param vncViewer
+			 *            The component which finally will perform the
+			 *            connection to the remote host
+			 * @param host
+			 * @param port
+			 */
+			private void configureConnection(ARViewer vncViewer, String host,
+					int port) {
+				Map<String, String> settings = new HashMap<String, String>();
+				settings.put(ARViewer.ARG_HOST, host);
+				settings.put(ARViewer.ARG_PORT, String.valueOf(port));
+
+				settings.put(ARViewer.ARG_SHOW_CONTROLS, String.valueOf(false));
+				settings.put(ARViewer.ARG_OPEN_NEW_WINDOW, String.valueOf(false));
+				settings.put(ARViewer.ARG_ALLOW_COPY_RECT, String.valueOf(false));
+				settings.put(ARViewer.ARG_COMPRESSION_LEVEL, String.valueOf(9));
+				settings.put(ARViewer.ARG_JPEG_IMAGE_QUALITY, String.valueOf(0));
+
+				vncViewer.configure(settings);
+				vncViewer.init();				
 			}
 		});
 		this.add(buttonConnect);

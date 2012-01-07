@@ -28,34 +28,90 @@ import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import javax.swing.BorderFactory;
+import javax.swing.JApplet;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
 
 import org.uoc.androidremote.client.structures.AndroidDevice;
 import org.uoc.androidremote.client.ui.ConnectionPanel;
 import org.uoc.androidremote.client.ui.NetworkPanel;
 import org.uoc.androidremote.client.ui.USBPanel;
 import org.uoc.androidremote.client.ui.USBScreenPanel;
-import org.uoc.androidremote.client.vnc.VncViewer;
 import org.uoc.androidremote.operations.Operation;
+
+import com.glavsoft.viewer.ARViewer;
 
 /**
  * Main AndroidRemoteClient class to hold the main window
  */
 public class Client extends JFrame {
 
+	/**
+	 * Simple class to handle all the logger from the vnc viewer and show it 
+	 * inside our swing layout.
+	 * 
+	 * @author roberrv[at]gmail.com
+	 *
+	 */
+	private final class StatusHandler extends Handler {
+		private final JLabel statusLabel;
+
+		private StatusHandler(JLabel statusLabel) {
+			this.statusLabel = statusLabel;
+		}
+
+		@Override
+		public void publish(final LogRecord record) {
+			SwingUtilities.invokeLater(new Runnable() {
+
+				@Override
+				public void run() {
+					if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+						statusLabel.setForeground(Color.RED);
+					} else {
+						statusLabel.setForeground(Color.BLACK);
+					}
+
+					statusLabel.setText(record.getMessage());
+
+					// remove after 15 seconds, if it holds my message yet
+					Timer timer = new Timer();
+					timer.schedule(new TimerTask() {
+							@Override public void run() {
+								statusLabel.setText(" ");
+							}
+						},
+						15 * 1000); // wait 15 seconds						
+				}
+				
+			});
+		}
+
+		@Override
+		public void flush() {
+		}
+
+		@Override
+		public void close() throws SecurityException {
+		}
+	}
+
 	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
 	
 	/** The vnc viewer. */
-	private final VncViewer vncViewer = new VncViewer();
+	private final ARViewer vncViewer = new ARViewer();
 	
 	/** The network panel. */
 	private NetworkPanel networkPanel;
@@ -106,7 +162,6 @@ public class Client extends JFrame {
 	public void start() {
 		// this.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		this.setSize(new Dimension(1000, 1000));
-		vncViewer.init();
 		JPanel mainPanel = new JPanel(new BorderLayout());
 
 		JPanel topPanel = new ConnectionPanel(this);
@@ -116,9 +171,16 @@ public class Client extends JFrame {
 		JPanel centerPanel = new JPanel(new GridLayout(1, 2));
 
 		JPanel vncContainer = new JPanel(new BorderLayout());
-		vncContainer.add(vncViewer.connStatusLabel, BorderLayout.NORTH);
-		JPanel vncPanel = vncViewer.vncFrame;
-		vncPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+		JLabel statusLabel = new JLabel(" ");
+		StatusHandler logHandler = new StatusHandler(statusLabel);
+		vncViewer.addLoggerHandler(logHandler);
+		logger.addHandler(logHandler);
+		
+		vncContainer.add(statusLabel, BorderLayout.NORTH);
+		
+		JApplet vncPanel = vncViewer;
+		//vncPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+		// TODO R: ensure this will work
 		vncContainer.add(vncPanel, BorderLayout.CENTER);
 		centerPanel.add(vncContainer);
 
@@ -188,13 +250,13 @@ public class Client extends JFrame {
 			available = true;
 		} catch (UnknownHostException e) {
 			System.err.println(e.getMessage());
-			gestionConnStatus.setText(GESTION_STATUS + "error de conexi—n");
+			gestionConnStatus.setText(GESTION_STATUS + "error de conexiï¿½n");
 		} catch (ConnectException e) {
 			gestionConnStatus
 					.setText(GESTION_STATUS + "servidor remoto parado");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
-			gestionConnStatus.setText(GESTION_STATUS + "error de conexi—n");
+			gestionConnStatus.setText(GESTION_STATUS + "error de conexiï¿½n");
 		}
 		return available;
 	}
@@ -225,7 +287,7 @@ public class Client extends JFrame {
 	 * 
 	 * @return the vnc viewer
 	 */
-	public VncViewer getVncViewer() {
+	public ARViewer getVncViewer() {
 		return vncViewer;
 	}
 
@@ -337,11 +399,9 @@ public class Client extends JFrame {
 			salida.flush();
 			return ins.readObject();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.severe(e.getMessage());
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.severe(e.getMessage());
 		}
 		return null;
 	}

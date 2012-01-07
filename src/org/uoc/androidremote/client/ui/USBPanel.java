@@ -50,10 +50,9 @@ public class USBPanel extends JPanel {
 	private JTextField appFileEntry;
 	
 	/**
-	 * Instantiates a new uSB panel.
+	 * Instantiates a new USB panel.
 	 * 
-	 * @param c
-	 *            the c
+	 * @param c the client which the panel belongs to
 	 */
 	public USBPanel(Client c) {
 		this.client = c;

@@ -59,7 +59,7 @@ public class Utilities {
 	 * @param output
 	 *            the output
 	 */
-	public static void transfertResource(Class c, String resourceName, File output) {
+	public static void transfertResource(Class<?> c, String resourceName, File output) {
 		InputStream resStream = c.getResourceAsStream(resourceName);
 		if (resStream == null)
 			throw new RuntimeException("Cannot find resource " + resourceName);

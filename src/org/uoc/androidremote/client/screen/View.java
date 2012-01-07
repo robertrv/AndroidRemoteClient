@@ -36,13 +36,7 @@ public class View extends JFrame {
 
     /** The Constant serialVersionUID. */
     private static final long serialVersionUID = 1L;
-    
-    /** The conector. */
-    private Conector conector;
-    
-    /** The dispositivo. */
-    private IDevice dispositivo;
-    
+        
     /** The old image dimension. */
     private Dimension oldImageDimension = null;
     
@@ -56,7 +50,6 @@ public class View extends JFrame {
 	 *            the dispositivo
 	 */
     public View(IDevice dispositivo){
-        this.dispositivo = dispositivo;
         this.setLayout(new BorderLayout());
         panel = new JPanelScreen();
         this.add(panel, BorderLayout.CENTER);
@@ -78,7 +71,6 @@ public class View extends JFrame {
 	 *            the new conector
 	 */
     public void setConector(Conector con) {
-        this.conector = con;
         con.screencapture.setListener(new GetScreenListener() {
 
             public void handleNewImage(Dimension size, BufferedImage image,
