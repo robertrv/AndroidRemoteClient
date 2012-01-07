@@ -77,7 +77,8 @@ public class Client extends JFrame {
 
 				@Override
 				public void run() {
-					if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+					if (record.getLevel().intValue() >= Level.WARNING
+							.intValue()) {
 						statusLabel.setForeground(Color.RED);
 					} else {
 						statusLabel.setForeground(Color.BLACK);
@@ -107,45 +108,36 @@ public class Client extends JFrame {
 		}
 	}
 
-	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
 	
-	/** The vnc viewer. */
 	private final ARViewer vncViewer = new ARViewer();
 	
-	/** The network panel. */
 	private NetworkPanel networkPanel;
 	
-	/** The usb panel. */
 	private USBPanel usbPanel;
 	
-	/** The usb screen panel. */
 	private USBScreenPanel usbScreenPanel;
 
-	/** The gestion conn status. */
 	private JLabel gestionConnStatus;	/** The device. */
 	private AndroidDevice device;
 	
-	/** The gestion port. */
 	private int gestionPort = 5000;
 	
-	/** The host. */
 	private String host = "localhost";
 	
-	/** The port. */
 	private int port = 0;
 	
-	/** The envia. */
 	private Socket envia;
 	
-	/** The salida. */
 	private ObjectOutputStream salida;
 	
-	/** The ins. */
 	private ObjectInputStream ins;
 
-	/** The Constant GESTION_STATUS. */
-	private static final String GESTION_STATUS = "Gestión - Estado: ";
+	private ConnectionPanel connectionPanel;
+
+	private JLabel statusLabel;
+
+	private static final String MNG_STATUS = "Management - State: ";
 	
 	private static final Logger logger = Logger.getLogger(Client.class.getName());
 
@@ -164,14 +156,14 @@ public class Client extends JFrame {
 		this.setSize(new Dimension(1000, 1000));
 		JPanel mainPanel = new JPanel(new BorderLayout());
 
-		JPanel topPanel = new ConnectionPanel(this);
+		connectionPanel = new ConnectionPanel(this);
 
-		mainPanel.add(topPanel, BorderLayout.NORTH);
+		mainPanel.add(connectionPanel, BorderLayout.NORTH);
 
 		JPanel centerPanel = new JPanel(new GridLayout(1, 2));
 
 		JPanel vncContainer = new JPanel(new BorderLayout());
-		JLabel statusLabel = new JLabel(" ");
+		statusLabel = new JLabel(" ");
 		StatusHandler logHandler = new StatusHandler(statusLabel);
 		vncViewer.addLoggerHandler(logHandler);
 		logger.addHandler(logHandler);
@@ -179,8 +171,6 @@ public class Client extends JFrame {
 		vncContainer.add(statusLabel, BorderLayout.NORTH);
 		
 		JApplet vncPanel = vncViewer;
-		//vncPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-		// TODO R: ensure this will work
 		vncContainer.add(vncPanel, BorderLayout.CENTER);
 		centerPanel.add(vncContainer);
 
@@ -188,7 +178,7 @@ public class Client extends JFrame {
 		JTabbedPane tabbedPane = new JTabbedPane();
 		networkPanel = new NetworkPanel(this);
 		usbPanel = new USBPanel(this);
-		gestionConnStatus = new JLabel(GESTION_STATUS + "desconectado");
+		gestionConnStatus = new JLabel(MNG_STATUS + "disconnected");
 		gestionContainer.add(gestionConnStatus, BorderLayout.NORTH);
 		usbScreenPanel = new USBScreenPanel(this);
 
@@ -212,6 +202,8 @@ public class Client extends JFrame {
 						+ t.getName() + ")";
 				logger.log(Level.SEVERE, msg, e);
 				JOptionPane.showMessageDialog(Client.this, e.getMessage());
+				boolean isStopped = Client.this.vncViewer.getIsAppletStopped();
+				Client.this.connectionPanel.setConnected(!isStopped);
 			}
 		});
 	}
@@ -229,7 +221,7 @@ public class Client extends JFrame {
 	}
 
 	/**
-	 * Inits the sockets.
+	 * inits management sockets
 	 * 
 	 * @return true, if successful
 	 */
@@ -241,7 +233,7 @@ public class Client extends JFrame {
 			salida = new ObjectOutputStream(envia.getOutputStream());
 			salida.flush();
 
-			String status = GESTION_STATUS + "conectado";
+			String status = MNG_STATUS + "connected";
 			manageUSBFunctions(device != null);
 			if (device != null) {
 				status += " - Conectado a USB";
@@ -250,13 +242,13 @@ public class Client extends JFrame {
 			available = true;
 		} catch (UnknownHostException e) {
 			System.err.println(e.getMessage());
-			gestionConnStatus.setText(GESTION_STATUS + "error de conexi�n");
+			gestionConnStatus.setText(MNG_STATUS + "connection error");
 		} catch (ConnectException e) {
 			gestionConnStatus
-					.setText(GESTION_STATUS + "servidor remoto parado");
+					.setText(MNG_STATUS + "remote server stopped");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
-			gestionConnStatus.setText(GESTION_STATUS + "error de conexi�n");
+			gestionConnStatus.setText(MNG_STATUS + "connection error");
 		}
 		return available;
 	}
@@ -320,12 +312,20 @@ public class Client extends JFrame {
 		}
 		Operation o = new Operation(Operation.OP_OPEN,
 				"Cliente: AndroidRemoteClient");
+
 		request(o);
-	}
+}
 	
 	public void closeConnection() {
-		request(new Operation(Operation.OP_CLOSE,
-				"Client: AndroidRemoteClient"));
+		if (salida == null) {
+			throw new IllegalStateException(
+					"Network error, manangment server down!");
+		}
+		if (initSockets()) {
+			request(new Operation(Operation.OP_CLOSE, 
+					"disconnecting from client AndroidRemoteClient"));			
+		}
+		gestionConnStatus.setText(MNG_STATUS + "disconnected");
 	}
 
 
@@ -399,17 +399,15 @@ public class Client extends JFrame {
 			salida.flush();
 			return ins.readObject();
 		} catch (IOException e) {
-			logger.severe(e.getMessage());
+			logger.log(Level.SEVERE,e.getMessage(), e);
 		} catch (ClassNotFoundException e) {
-			logger.severe(e.getMessage());
+			logger.log(Level.SEVERE,e.getMessage(), e);
 		}
 		return null;
 	}
-	
-	/**
-	 * Clean vnc.
-	 */
-	public void cleanVNC(){
-		
+
+	public void showConnectionClosed() {
+		statusLabel.setText("Disconnected from server");
 	}
+	
 }

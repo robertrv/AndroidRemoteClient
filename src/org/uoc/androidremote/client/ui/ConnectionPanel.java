@@ -35,39 +35,34 @@ import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.IDevice;
 import com.glavsoft.viewer.ARViewer;
 
-// TODO: Auto-generated Javadoc
 /**
- * The Class ConnectionPanel.
+ * Swing panel to manage the connection stuff, like connect or disconnect to 
+ * the remote device server.
+ * 
+ * Managing also the ip's and port in case of a network connection.
  */
 public class ConnectionPanel extends JPanel {
 
 	private static final String DEFAULT_IP = "127.0.0.1";
 
-	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
 	
-	/** The host entry. */
 	private final JTextField hostEntry = new JTextField(20);
 	
-	/** The port entry. */
 	private final JTextField portEntry = new JTextField(5);
 	
-	/** The gestion port entry. */
 	private final JTextField gestionPortEntry = new JTextField(5);
 	
-	/** The client. */
 	private Client client;
 	
-	/** The usb conn. */
 	private JRadioButton usbConn;
 	
-	/** The net conn. */
 	private JRadioButton netConn;
 	
-	/** The button connect. */
 	private JButton buttonConnect;
+	private static final String TO_CONNECT = "Conectar";
+	private static final String TO_DISCONNECT = "Desconectar";
 	
-	/** The connected. */
 	private boolean connected = false;
 
 	/**
@@ -87,8 +82,7 @@ public class ConnectionPanel extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				hostEntry.setText("127.0.0.1");
-				// portEntry.setText("5801");
+				hostEntry.setText(DEFAULT_IP);
 				hostEntry.setEnabled(false);
 			}
 		});
@@ -97,7 +91,6 @@ public class ConnectionPanel extends JPanel {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				hostEntry.setText(DEFAULT_IP);
-				// portEntry.setText("5901");
 				hostEntry.setEnabled(true);
 			}
 		});
@@ -119,102 +112,97 @@ public class ConnectionPanel extends JPanel {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				if (!connected) {
-					client.setHost(hostEntry.getText());
-					String strVNCPort = portEntry.getText();
-					int port = 0;
-					try {
-						port = Integer.valueOf(strVNCPort);
-					} catch (NumberFormatException e) {
-						port = 0;
-					}
-					client.setPort(port);
-					String strGestionPort = gestionPortEntry.getText();
-					int gestionPort = 0;
-					try {
-						gestionPort = Integer.valueOf(strGestionPort);
-					} catch (NumberFormatException e) {
-						gestionPort = 0;
-					}
-					client.setGestionPort(gestionPort);
-					configureConnection(client.getVncViewer(), client.getHost(), port);
-					//client.getVncViewer().configure(client.getHost(), port);
-					/*
-		Parser parser = new Parser();
-		ParametersHandler.completeParserOptions(parser);
-
-		parser.parse(args);
-		if (parser.isSet(ARG_HELP)) {
-			printUsage(parser.optionsUsage());
-			System.exit(0);
-		}
-		ARViewer viewer = new ARViewer(parser);
-		SwingUtilities.invokeLater(viewer);					
-					 */
-					
-					client.manageNetworkFunctions(true);
-
-					if (usbConn.isSelected()) {
-						try {
-							AndroidDebugBridge bridge = AndroidDebugBridge
-									.createBridge();
-							waitDeviceList(bridge);
-							IDevice devices[] = bridge.getDevices();
-							AndroidDevice device = new AndroidDevice(devices[0]);
-							device.getDevice().createForward(port, port);
-							device.getDevice().createForward(gestionPort,
-									gestionPort);
-							client.setDevice(device);
-						} catch (Exception e) {
-							throw new RuntimeException(e);
-						}
-					}
-					try {
-						client.initSockets();
-						client.openConnection();
-					} catch (Exception e) {
-						throw new RuntimeException(e);
-					}
-					connected = true;
-					buttonConnect.setText("Desconectar");
+					connect();
 				} else {
-					client.getVncViewer().stopTasksAndRunNewSession(
-							"Closing connection");
-					//client.getVncViewer().stop(); // TODO R: Review if this is necessary
-					client.manageNetworkFunctions(false);
-					client.manageUSBFunctions(false);
-					buttonConnect.setText("Conectar");
-					connected = false;
+					disconnect();
 				}
-			}
-
-			/**
-			 * Will prepare the vncViewer to connect to the host and port with
-			 * the default parameters, like scaling factor, color depth and so.
-			 * 
-			 * @param vncViewer
-			 *            The component which finally will perform the
-			 *            connection to the remote host
-			 * @param host
-			 * @param port
-			 */
-			private void configureConnection(ARViewer vncViewer, String host,
-					int port) {
-				Map<String, String> settings = new HashMap<String, String>();
-				settings.put(ARViewer.ARG_HOST, host);
-				settings.put(ARViewer.ARG_PORT, String.valueOf(port));
-
-				settings.put(ARViewer.ARG_SHOW_CONTROLS, String.valueOf(false));
-				settings.put(ARViewer.ARG_OPEN_NEW_WINDOW, String.valueOf(false));
-				settings.put(ARViewer.ARG_ALLOW_COPY_RECT, String.valueOf(false));
-				settings.put(ARViewer.ARG_COMPRESSION_LEVEL, String.valueOf(9));
-				settings.put(ARViewer.ARG_JPEG_IMAGE_QUALITY, String.valueOf(0));
-
-				vncViewer.configure(settings);
-				vncViewer.init();				
 			}
 		});
 		this.add(buttonConnect);
 	}
+	
+	private void disconnect() {
+		client.closeConnection();
+		client.getVncViewer().dontTryAgain();
+		client.manageNetworkFunctions(false);
+		client.manageUSBFunctions(false);
+		
+		setConnected(false);
+		client.showConnectionClosed();
+	}
+	
+	private void connect() {
+		client.setHost(hostEntry.getText());
+		String strVNCPort = portEntry.getText();
+		int vncPort = 0;
+		try {
+			vncPort = Integer.valueOf(strVNCPort);
+		} catch (NumberFormatException e) {
+			vncPort = 0;
+		}
+		client.setPort(vncPort);
+		String strGestionPort = gestionPortEntry.getText();
+		int gestionPort = 0;
+		try {
+			gestionPort = Integer.valueOf(strGestionPort);
+		} catch (NumberFormatException e) {
+			gestionPort = 0;
+		}
+		client.setGestionPort(gestionPort);
+		configureConnection(client.getVncViewer(), client.getHost(), vncPort);
+		
+		client.manageNetworkFunctions(true);
+
+		if (usbConn.isSelected()) {
+			try {
+				AndroidDebugBridge bridge = AndroidDebugBridge
+						.createBridge();
+				waitDeviceList(bridge);
+				IDevice devices[] = bridge.getDevices();
+				AndroidDevice device = new AndroidDevice(devices[0]);
+				device.getDevice().createForward(vncPort, vncPort);
+				device.getDevice().createForward(gestionPort,
+						gestionPort);
+				client.setDevice(device);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		try {
+			client.initSockets();
+			client.openConnection();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		setConnected(true);
+	}
+
+	/**
+	 * Will prepare the vncViewer to connect to the host and port with
+	 * the default parameters, like scaling factor, color depth and so.
+	 * 
+	 * @param vncViewer
+	 *            The component which finally will perform the
+	 *            connection to the remote host
+	 * @param host
+	 * @param port
+	 */
+	private void configureConnection(ARViewer vncViewer, String host,
+			int port) {
+		Map<String, String> settings = new HashMap<String, String>();
+		settings.put(ARViewer.ARG_HOST, host);
+		settings.put(ARViewer.ARG_PORT, String.valueOf(port));
+
+		settings.put(ARViewer.ARG_SHOW_CONTROLS, String.valueOf(false));
+		settings.put(ARViewer.ARG_OPEN_NEW_WINDOW, String.valueOf(false));
+		settings.put(ARViewer.ARG_ALLOW_COPY_RECT, String.valueOf(false));
+		settings.put(ARViewer.ARG_COMPRESSION_LEVEL, String.valueOf(9));
+		settings.put(ARViewer.ARG_JPEG_IMAGE_QUALITY, String.valueOf(0));
+
+		vncViewer.configure(settings);
+		vncViewer.init();				
+	}
+
 
 	/**
 	 * Wait device list.
@@ -236,5 +224,10 @@ public class ConnectionPanel extends JPanel {
 				throw new RuntimeException("Timeout getting device list!");
 			}
 		}
+	}
+	
+	public void setConnected(boolean connected) {
+		this.connected = connected;
+		buttonConnect.setText(connected ?TO_DISCONNECT:TO_CONNECT);
 	}
 }

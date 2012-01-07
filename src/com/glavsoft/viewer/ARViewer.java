@@ -114,7 +114,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 	public static final String ARG_HELP = "help";
 	public static final int DEFAULT_PORT = 5900;
 
-	public static Logger logger = Logger.getLogger("com.glavsoft");
+	public static Logger logger = Logger.getLogger(ARViewer.class.getName());
 
 	/**
 	 * Ask user for password if needed
@@ -260,6 +260,18 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		return unstructuredSettings.get(name);
 	}
 
+	public boolean getIsAppletStopped() {
+		return isAppletStopped;
+	}
+	
+	/**
+	 * Method to avoid trying and trying again directly from this component, 
+	 * probably and upper component can take care of this part.
+	 */
+	public void dontTryAgain() {
+		closeApp();
+		logger.info("Disconnected from VNC server.");
+	}
 	/* XXX End of AndroidRemote Changes !*/
 
 	@Override

@@ -40,7 +40,6 @@ import org.uoc.androidremote.operations.Operation;
 import org.uoc.androidremote.operations.Reboot;
 import org.uoc.androidremote.operations.ServicesRunning;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class NetworkPanel.
  */
@@ -303,18 +302,18 @@ public class NetworkPanel extends JPanel {
 	
 	private String getImportanceText(int imp) {
 		switch (imp) {
-		case IMPORTANCE_BACKGROUND:
-			return "Background";
-		case IMPORTANCE_EMPTY:
-			return "Empty";
-		case IMPORTANCE_FOREGROUND:
-			return "Foreground";
-		case IMPORTANCE_SERVICE:
-			return "Service";
-		case IMPORTANCE_VISIBLE:
-			return "Visible";
-		default:
-			return "";
+			case IMPORTANCE_BACKGROUND:
+				return "Background";
+			case IMPORTANCE_EMPTY:
+				return "Empty";
+			case IMPORTANCE_FOREGROUND:
+				return "Foreground";
+			case IMPORTANCE_SERVICE:
+				return "Service";
+			case IMPORTANCE_VISIBLE:
+				return "Visible";
+			default:
+				return "";
 		}
 	}
 	
