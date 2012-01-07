@@ -68,27 +68,6 @@ public class JFrameExplorer extends JFrame {
 	Map<String, List<FileInfo>> cache = new LinkedHashMap<String, List<FileInfo>>();
 
 	/**
-	 * The Class FileTreeNode.
-	 */
-	private class FileTreeNode extends DefaultMutableTreeNode {
-		
-		/** The fi. */
-		FileInfo fi;
-
-		/**
-		 * Instantiates a new file tree node.
-		 * 
-		 * @param fi
-		 *            the fi
-		 */
-		public FileTreeNode(FileInfo fi) {
-			super(fi.name);
-			this.fi = fi;
-		}
-
-	}
-
-	/**
 	 * The Class FolderTreeNode.
 	 */
 	private class FolderTreeNode extends LazyMutableTreeNode {
