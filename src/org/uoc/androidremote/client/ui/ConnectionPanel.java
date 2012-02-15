@@ -193,11 +193,13 @@ public class ConnectionPanel extends JPanel {
 		settings.put(ARViewer.ARG_HOST, host);
 		settings.put(ARViewer.ARG_PORT, String.valueOf(port));
 
-		settings.put(ARViewer.ARG_SHOW_CONTROLS, String.valueOf(false));
+		settings.put(ARViewer.ARG_SHOW_CONTROLS, String.valueOf(true));
 		settings.put(ARViewer.ARG_OPEN_NEW_WINDOW, String.valueOf(false));
 		settings.put(ARViewer.ARG_ALLOW_COPY_RECT, String.valueOf(false));
 		settings.put(ARViewer.ARG_COMPRESSION_LEVEL, String.valueOf(9));
 		settings.put(ARViewer.ARG_JPEG_IMAGE_QUALITY, String.valueOf(0));
+		settings.put(ARViewer.ARG_COLOR_DEPTH, String.valueOf(16));
+		settings.put(ARViewer.ARG_ALLOW_COPY_RECT, String.valueOf(true));
 
 		vncViewer.configure(settings);
 		vncViewer.init();				

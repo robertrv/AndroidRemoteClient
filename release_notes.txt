@@ -13,3 +13,7 @@ First release of the software comming from http://code.google.com/p/androidremot
  tightvnc version (2.0.4) as a library, not directly the code. Still needed to
   copy one class of code, named ARViewer but clearly identified where the 
   changes are so we can easily upgrade to a new release.
+  
+  2.1
+---
+ * New tight vnc version (2.1).

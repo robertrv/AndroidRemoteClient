@@ -26,6 +26,7 @@ package com.glavsoft.viewer;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
+import java.awt.Dialog.ModalityType;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -38,16 +39,22 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 
 import javax.swing.Box;
 import javax.swing.JApplet;
 import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -60,21 +67,19 @@ import com.glavsoft.exceptions.FatalException;
 import com.glavsoft.exceptions.TransportException;
 import com.glavsoft.exceptions.UnsupportedProtocolVersionException;
 import com.glavsoft.exceptions.UnsupportedSecurityTypeException;
+import com.glavsoft.rfb.IChangeSettingsListener;
 import com.glavsoft.rfb.IPasswordRetriever;
-import com.glavsoft.rfb.client.FramebufferUpdateRequestMessage;
+import com.glavsoft.rfb.ISessionController;
 import com.glavsoft.rfb.client.KeyEventMessage;
-import com.glavsoft.rfb.client.SetEncodingsMessage;
-import com.glavsoft.rfb.encoding.decoder.DecodersContainer;
-import com.glavsoft.rfb.protocol.MessageQueue;
 import com.glavsoft.rfb.protocol.Protocol;
+import com.glavsoft.rfb.protocol.ProtocolContext;
 import com.glavsoft.rfb.protocol.ProtocolSettings;
-import com.glavsoft.rfb.protocol.ReceiverTask;
-import com.glavsoft.rfb.protocol.SenderTask;
-import com.glavsoft.transport.Transport;
+import com.glavsoft.transport.Reader;
+import com.glavsoft.transport.Writer;
+import com.glavsoft.utils.Keymap;
 import com.glavsoft.utils.Strings;
 import com.glavsoft.viewer.cli.Parser;
 import com.glavsoft.viewer.swing.ClipboardControllerImpl;
-import com.glavsoft.viewer.swing.KeyEventListener;
 import com.glavsoft.viewer.swing.ModifierButtonEventListener;
 import com.glavsoft.viewer.swing.ParametersHandler;
 import com.glavsoft.viewer.swing.ParametersHandler.ConnectionParams;
@@ -84,19 +89,9 @@ import com.glavsoft.viewer.swing.gui.ConnectionDialog;
 import com.glavsoft.viewer.swing.gui.OptionsDialog;
 import com.glavsoft.viewer.swing.gui.PasswordDialog;
 
-/**
- * This is a forced copy of the Viewer class of tightvnc java code due the lack
- * of simple way to use this class from another application, like we need here!
- * 
- * We will try to change the minimum part so we can update on future releases
- * 
- * @author robertrv [at] gmail.com
- * 
- */
 @SuppressWarnings("serial")
-public class ARViewer extends JApplet implements Runnable, IViewerSessionManager,
-		WindowListener {
-	
+public class ARViewer extends JApplet implements Runnable, ISessionController,
+		WindowListener, IChangeSettingsListener {
 	public static final String ARG_LOCAL_POINTER = "LocalPointer";
 	public static final String ARG_SCALING_FACTOR = "ScalingFactor";
 	public static final String ARG_COLOR_DEPTH = "ColorDepth";
@@ -113,25 +108,21 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 	public static final String ARG_HOST = "host";
 	public static final String ARG_HELP = "help";
 	public static final int DEFAULT_PORT = 5900;
+	public static final String ARG_CONVERT_TO_ASCII = "ConvertToASCII";
+	public static final String ARG_ALLOW_CLIPBOARD_TRANSFER = "AllowClipboardTransfer";
 
-	public static Logger logger = Logger.getLogger(ARViewer.class.getName());
+	public static Logger logger = Logger.getLogger("com.glavsoft");;
 
 	/**
 	 * Ask user for password if needed
 	 */
-	private static class PasswordChooser implements IPasswordRetriever {
+	private class PasswordChooser implements IPasswordRetriever {
 		private final String passwordPredefined;
 		private final ParametersHandler.ConnectionParams connectionParams;
 		PasswordDialog passwordDialog;
 		private final JFrame owner;
 		private final WindowListener onClose;
 
-		/**
-		 * @param passwordPredefined
-		 * @param connectionParams
-		 * @param onClose
-		 *            TODO
-		 */
 		private PasswordChooser(String passwordPredefined,
 				ParametersHandler.ConnectionParams connectionParams,
 				JFrame owner, WindowListener onClose) {
@@ -149,7 +140,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 
 		private String getPasswordFromGUI() {
 			if (null == passwordDialog) {
-				passwordDialog = new PasswordDialog(owner, onClose);
+				passwordDialog = new PasswordDialog(owner, onClose, isApplet);
 			}
 			passwordDialog.setServerHostName(connectionParams.hostName);
 			passwordDialog.setVisible(true);
@@ -187,8 +178,6 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 	private Socket workingSocket;
 	private Protocol workingProtocol;
 	private JFrame containerFrame;
-	private SenderTask senderTask;
-	private ReceiverTask receiverTask;
 	private volatile boolean forceConnectionDialog;
 	boolean isSeparateFrame = true;
 	boolean isApplet = true;
@@ -197,17 +186,19 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 	public final ProtocolSettings settings = ProtocolSettings
 			.getDefaultSettings();
 	private OptionsDialog optionsDialog;
-	private final DecodersContainer decoders = new DecodersContainer();
 	private ClipboardControllerImpl clipboardController;
 	private boolean tryAgain;
 	private boolean isAppletStopped = false;
-	private Map<String,String> unstructuredSettings;
+	private boolean isStoppingProcess;
+	private List<JComponent> kbdButtons;
 
 	public ARViewer() {
 		connectionParams = new ParametersHandler.ConnectionParams();
 	}
 
-	/* XXX AndroidRemote Changes !*/
+	/* XXX AndroidRemote Changes ! */
+	private Map<String, String> unstructuredSettings;
+
 	private ARViewer(Parser parser) {
 		this();
 		initializeWithParser(parser);
@@ -221,40 +212,43 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		logger.info("TightVNC Viewer");
 		isApplet = false;
 	}
+
 	/**
-	 * Useful to receive notifications or information when there is any action 
+	 * Useful to receive notifications or information when there is any action
 	 * inside the viewer
+	 * 
 	 * @param logHandler
 	 */
 	public void addLoggerHandler(Handler logHandler) {
 		logger.addHandler(logHandler);
 	}
-	
+
 	/**
-	 * a method which configures current viewer with new settings. 
+	 * a method which configures current viewer with new settings.
+	 * 
 	 * @param args
 	 */
-	public void configure(Map<String,String> settings) {
+	public void configure(Map<String, String> settings) {
 		unstructuredSettings = settings;
-		 
+
 		String[] cliGeneratedArgs = new String[settings.size()];
-		
+
 		Parser parser = new Parser();
 		int position = 0;
 		for (Map.Entry<String, String> setting : settings.entrySet()) {
 			cliGeneratedArgs[position++] = '-' + setting.getKey() + '='
 					+ setting.getValue();
 		}
-		
+
 		ParametersHandler.completeParserOptions(parser);
 
 		parser.parse(cliGeneratedArgs);
-		
+
 		initializeWithParser(parser);
 		isApplet = true;
 		ParametersHandler.isSeparateFrame = false;
 	}
-	
+
 	@Override
 	public String getParameter(String name) {
 		return unstructuredSettings.get(name);
@@ -263,36 +257,33 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 	public boolean getIsAppletStopped() {
 		return isAppletStopped;
 	}
-	
+
 	/**
-	 * Method to avoid trying and trying again directly from this component, 
+	 * Method to avoid trying and trying again directly from this component,
 	 * probably and upper component can take care of this part.
 	 */
 	public void dontTryAgain() {
 		closeApp();
 		logger.info("Disconnected from VNC server.");
 	}
-	/* XXX End of AndroidRemote Changes !*/
+
+	/* XXX End of AndroidRemote Changes ! */
 
 	@Override
 	public synchronized void stopTasksAndRunNewSession(String message) {
-		if (null == senderTask)
+		if (isStoppingProcess)
 			return;
 		stopTasks();
 		// start new session
-		forceConnectionDialog = connectionParams.isHostNameEmpty();
+		showReconnectDialog("Connection lost", message);
 		SwingUtilities.invokeLater(this);
 	}
 
 	private synchronized void stopTasks() {
-		if (senderTask != null) {
-			senderTask.stop();
+		isStoppingProcess = true;
+		if (workingProtocol != null) {
+			workingProtocol.stopTasks();
 		}
-		if (receiverTask != null) {
-			receiverTask.stop();
-		}
-		senderTask = null;
-		receiverTask = null;
 		if (workingSocket != null && workingSocket.isConnected()) {
 			try {
 				workingSocket.close();
@@ -303,6 +294,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 			containerFrame.dispose();
 			containerFrame = null;
 		}
+		isStoppingProcess = false;
 	}
 
 	@Override
@@ -373,48 +365,31 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 				closeApp();
 				break;
 			}
-			decoders.initDecodersWhenNeeded(settings.encodings);
 			logger.info("Connected");
 
 			try {
-				Transport.Reader reader = new Transport.Reader(
-						workingSocket.getInputStream());
-				Transport.Writer writer = new Transport.Writer(
-						workingSocket.getOutputStream());
+				workingSocket.setTcpNoDelay(true); // disable Nagle algorithm
+				Reader reader = new Reader(workingSocket.getInputStream());
+				Writer writer = new Writer(workingSocket.getOutputStream());
 
 				workingProtocol = new Protocol(reader, writer,
 						new PasswordChooser(passwordFromParams,
 								connectionParams, containerFrame, this),
 						settings);
 				workingProtocol.handshake();
-				workingProtocol.negotiateAboutSecurityType();
-				workingProtocol.authenticate();
-				workingProtocol.clientAndServerInit();
 
-				workingProtocol.set32bppPixelFormat();
-				settings.setPixelFormat(workingProtocol.getPixelFormat());
-
-				MessageQueue senderQueue = new MessageQueue();
-				workingProtocol.startNormalHandling(senderQueue);
-				decoders.resetDecoders();
-				surface = new Surface(workingProtocol.getFbWidth(),
-						workingProtocol.getFbHeight(), senderQueue, settings);
-				containerFrame = createContainer(workingProtocol.getFbWidth(),
-						workingProtocol.getFbHeight(), senderQueue,
-						workingProtocol.getRemoteDesktopName());
-
-				senderTask = new SenderTask(senderQueue, writer, this);
-				new Thread(senderTask).start();
-
-				clipboardController = new ClipboardControllerImpl(senderQueue);
+				clipboardController = new ClipboardControllerImpl(
+						workingProtocol);
 				clipboardController.setEnabled(settings
 						.isAllowClipboardTransfer());
-				receiverTask = new ReceiverTask(reader,
-						workingProtocol.getFbWidth(),
-						workingProtocol.getFbHeight(),
-						workingProtocol.getPixelFormat(), surface,
-						clipboardController, this, decoders, senderQueue);
-				new Thread(receiverTask).start();
+				settings.addListener(clipboardController);
+
+				surface = new Surface(workingProtocol);
+				settings.addListener(this);
+				containerFrame = createContainer();
+
+				workingProtocol.startNormalHandling(this, surface,
+						clipboardController);
 				tryAgain = false;
 			} catch (UnsupportedProtocolVersionException e) {
 				showReconnectDialog("Unsupported Protocol Version",
@@ -443,8 +418,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		}
 	}
 
-	private JFrame createContainer(final int width, final int height,
-			final MessageQueue messageQueue, final String title) {
+	private JFrame createContainer() {
 		JPanel outerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
 		outerPanel.add(surface);
 
@@ -458,7 +432,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 			if (!isApplet) {
 				frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			}
-			frame.setTitle(title);
+			frame.setTitle(workingProtocol.getRemoteDesktopName());
 			frame.setLayout(new BorderLayout());
 			frame.getContentPane().add(scroller, BorderLayout.CENTER);
 			List<Image> icons = Utils.getIcons();
@@ -473,7 +447,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		}
 
 		if (showControls) {
-			createButtonsPanel(messageQueue, title, container);
+			createButtonsPanel(container, workingProtocol);
 		}
 
 		if (isSeparateFrame) {
@@ -486,8 +460,8 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		return isSeparateFrame ? frame : null;
 	}
 
-	protected void createButtonsPanel(final MessageQueue messageQueue,
-			final String title, Container container) {
+	protected void createButtonsPanel(Container container,
+			final ProtocolContext context) {
 		JPanel buttonBar = new JPanel(new FlowLayout(FlowLayout.LEADING, 4, 1));
 
 		Insets buttonsMargin = new Insets(2, 2, 2, 2);
@@ -499,7 +473,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		optionsButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				showOptionsDialog(messageQueue);
+				showOptionsDialog();
 				setSurfaceToHandleKbdFocus();
 			}
 		});
@@ -511,7 +485,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		infoButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				showConnectionInfoMessage(title);
+				showConnectionInfoMessage(context.getRemoteDesktopName());
 				setSurfaceToHandleKbdFocus();
 			}
 		});
@@ -524,40 +498,46 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		refreshButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				messageQueue.put(new FramebufferUpdateRequestMessage(0, 0,
-						surface.getWidth(), surface.getHeight(), false));
+				context.sendRefreshMessage();
 				setSurfaceToHandleKbdFocus();
 			}
 		});
 
+		kbdButtons = new LinkedList<JComponent>();
 		buttonBar.add(Box.createHorizontalStrut(10));
 		JButton ctrlAltDelButton = new JButton(
 				Utils.getButtonIcon("ctrl-alt-del"));
 		ctrlAltDelButton.setToolTipText("Send 'Ctrl-Alt-Del'");
 		ctrlAltDelButton.setMargin(buttonsMargin);
 		buttonBar.add(ctrlAltDelButton);
+		kbdButtons.add(ctrlAltDelButton);
 		ctrlAltDelButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				sendCtrlAltDel(messageQueue);
+				sendCtrlAltDel(context);
 				setSurfaceToHandleKbdFocus();
 			}
 		});
+
 		JButton winButton = new JButton(Utils.getButtonIcon("win"));
 		winButton.setToolTipText("Send 'Win' key as 'Ctrl-Esc'");
 		winButton.setMargin(buttonsMargin);
 		buttonBar.add(winButton);
+		kbdButtons.add(winButton);
 		winButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				sendWinKey(messageQueue);
+				sendWinKey(context);
 				setSurfaceToHandleKbdFocus();
 			}
 		});
+
 		JToggleButton ctrlButton = new JToggleButton(
 				Utils.getButtonIcon("ctrl"));
+		ctrlButton.setToolTipText("Ctrl Lock");
 		ctrlButton.setMargin(buttonsMargin);
 		buttonBar.add(ctrlButton);
+		kbdButtons.add(ctrlButton);
 		ctrlButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -568,26 +548,30 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 			@Override
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getStateChange() == ItemEvent.SELECTED) {
-					messageQueue.put(new KeyEventMessage(
-							KeyEventListener.K_CTRL_LEFT, true));
+					context.sendMessage(new KeyEventMessage(Keymap.K_CTRL_LEFT,
+							true));
 				} else {
-					messageQueue.put(new KeyEventMessage(
-							KeyEventListener.K_CTRL_LEFT, false));
+					context.sendMessage(new KeyEventMessage(Keymap.K_CTRL_LEFT,
+							false));
 				}
 			}
 		});
+
 		JToggleButton altButton = new JToggleButton(Utils.getButtonIcon("alt"));
+		kbdButtons.add(altButton);
+		altButton.setToolTipText("Alt Lock");
 		altButton.setMargin(buttonsMargin);
 		buttonBar.add(altButton);
+		kbdButtons.add(altButton);
 		altButton.addItemListener(new ItemListener() {
 			@Override
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getStateChange() == ItemEvent.SELECTED) {
-					messageQueue.put(new KeyEventMessage(
-							KeyEventListener.K_ALT_LEFT, true));
+					context.sendMessage(new KeyEventMessage(Keymap.K_ALT_LEFT,
+							true));
 				} else {
-					messageQueue.put(new KeyEventMessage(
-							KeyEventListener.K_ALT_LEFT, false));
+					context.sendMessage(new KeyEventMessage(Keymap.K_ALT_LEFT,
+							false));
 				}
 			}
 		});
@@ -631,15 +615,26 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 	}
 
 	protected void showReconnectDialog(String title, String message) {
-		if (tryAgain) {
-			if (JOptionPane.NO_OPTION == JOptionPane.showConfirmDialog(
-					containerFrame, message + "\nTry another connection?",
-					title, JOptionPane.YES_NO_OPTION)) {
-				closeApp();
-			} else {
-				forceConnectionDialog = !isApplet
-						|| connectionParams.isHostNameEmpty();
-			}
+		JOptionPane reconnectPane = new JOptionPane(message
+				+ "\nTry another connection?", JOptionPane.QUESTION_MESSAGE,
+				JOptionPane.YES_NO_OPTION);
+		final JDialog reconnectDialog = reconnectPane.createDialog(
+				containerFrame, title);
+		reconnectDialog
+				.setModalityType(isApplet ? ModalityType.APPLICATION_MODAL
+						: ModalityType.TOOLKIT_MODAL);
+		reconnectDialog.setAlwaysOnTop(true);
+		List<Image> icons = Utils.getIcons();
+		if (icons.size() != 0) {
+			reconnectDialog.setIconImages(icons);
+		}
+		reconnectDialog.setVisible(true);
+		if (reconnectPane.getValue() == null
+				|| (Integer) reconnectPane.getValue() == JOptionPane.NO_OPTION) {
+			closeApp();
+		} else {
+			forceConnectionDialog = !isApplet
+					|| connectionParams.isHostNameEmpty();
 		}
 	}
 
@@ -656,7 +651,7 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 					connectionDialog = new ConnectionDialog(containerFrame,
 							this, connectionParams.hostName,
 							connectionParams.portNumber, optionsDialog,
-							settings);
+							settings, isApplet);
 				}
 				connectionDialog.setVisible(true);
 				connectionParams.hostName = connectionDialog
@@ -665,33 +660,29 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 			}
 			logger.info("Connecting to host " + connectionParams.hostName + ":"
 					+ connectionParams.portNumber);
-			logger.info(String.valueOf(isApplet));
 			try {
 				socket = new Socket(connectionParams.hostName,
 						connectionParams.portNumber);
 				wasError = false;
 			} catch (UnknownHostException e) {
 				logger.severe("Unknown host: " + connectionParams.hostName);
-				JOptionPane.showMessageDialog(null, "Unknown host: '"
-						+ connectionParams.hostName + "'",
-						"Couldn't connect to host", JOptionPane.ERROR_MESSAGE);
+				showConnectionErrorDialog("Unknown host: '"
+						+ connectionParams.hostName + "'");
 				wasError = true;
 			} catch (IOException e) {
 				logger.severe("Couldn't connect to: "
 						+ connectionParams.hostName + ":"
 						+ connectionParams.portNumber + ": " + e.getMessage());
-				JOptionPane.showMessageDialog(null, "Couldn't connect to: '"
-						+ connectionParams.hostName + "'\n" + e.getMessage(),
-						"Couldn't connect to host", JOptionPane.ERROR_MESSAGE);
+				showConnectionErrorDialog("Couldn't connect to: '"
+						+ connectionParams.hostName + "'\n" + e.getMessage());
 				wasError = true;
 			}
 			if (null == socket && !wasError) {
 				logger.severe("Couldn't connect to: "
 						+ connectionParams.hostName + ":"
 						+ connectionParams.portNumber + ", socket is null");
-				JOptionPane.showMessageDialog(null, "Couldn't connect to: '"
-						+ connectionParams.hostName + "'",
-						"Couldn't connect to host", JOptionPane.ERROR_MESSAGE);
+				showConnectionErrorDialog("Couldn't connect to: '"
+						+ connectionParams.hostName + "'");
 				wasError = true;
 			}
 		} while (!isApplet && (connectionParams.isHostNameEmpty() || wasError));
@@ -702,27 +693,36 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		return socket;
 	}
 
-	private void applySettings(MessageQueue messageQueue) {
-		// TODO recreate Renderer on scale changed
-		clipboardController.setEnabled(settings.isAllowClipboardTransfer());
-		surface.enableUserInput(!settings.isViewOnly());
-		surface.showCursor(settings.isShowRemoteCursor());
-		decoders.initDecodersWhenNeeded(settings.encodings);
-		SetEncodingsMessage setEncodingsMessage = new SetEncodingsMessage(
-				settings.encodings);
-		messageQueue.put(setEncodingsMessage);
-		logger.fine("sent: " + setEncodingsMessage.toString());
+	public void showConnectionErrorDialog(final String message) {
+		JOptionPane errorPane = new JOptionPane(message.toString(),
+				JOptionPane.ERROR_MESSAGE);
+		final JDialog errorDialog = errorPane.createDialog(containerFrame,
+				"Connection error");
+		errorDialog.setModalityType(isApplet ? ModalityType.APPLICATION_MODAL
+				: ModalityType.TOOLKIT_MODAL);
+		errorDialog.setAlwaysOnTop(true);
+		errorDialog.setVisible(true);
 	}
 
-	private void showOptionsDialog(final MessageQueue messageQueue) {
+	@Override
+	public void fireChangeSettings(ProtocolSettings settings) {
+		setEnabledKbdButtons(!settings.isViewOnly());
+	}
+
+	private void setEnabledKbdButtons(boolean enabled) {
+		if (kbdButtons != null) {
+			for (JComponent b : kbdButtons) {
+				b.setEnabled(enabled);
+			}
+		}
+	}
+
+	private void showOptionsDialog() {
 		if (null == optionsDialog) {
 			optionsDialog = new OptionsDialog(containerFrame);
 		}
 		optionsDialog.initControlsFromSettings(settings, false);
 		optionsDialog.setVisible(true);
-		if (optionsDialog.isOkPressed()) {
-			applySettings(messageQueue);
-		}
 	}
 
 	private void showConnectionInfoMessage(final String title) {
@@ -736,9 +736,12 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 				.append(String.valueOf(surface.getWidth())).append(" \u00D7 ") // multiplication
 																				// sign
 				.append(String.valueOf(surface.getHeight())).append("\n");
-		message.append("Using depth: ")
-				.append(String.valueOf(settings.getPixelFormat().depth))
-				.append("\n");
+		message.append("Color format: ")
+				.append(String.valueOf(Math.round(Math.pow(2,
+						workingProtocol.getPixelFormat().depth))))
+				.append(" colors (")
+				.append(String.valueOf(workingProtocol.getPixelFormat().depth))
+				.append(" bits)\n");
 		message.append("Current protocol version: ").append(
 				settings.getProtocolVersion());
 		if (settings.isTight()) {
@@ -746,30 +749,29 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 		}
 		message.append("\n");
 
-		JOptionPane.showMessageDialog(containerFrame, message.toString(),
-				"VNC connection info", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane infoPane = new JOptionPane(message.toString(),
+				JOptionPane.INFORMATION_MESSAGE);
+		final JDialog infoDialog = infoPane.createDialog(containerFrame,
+				"VNC connection info");
+		infoDialog.setModalityType(ModalityType.MODELESS);
+		infoDialog.setAlwaysOnTop(true);
+		infoDialog.setVisible(true);
 	}
 
-	private void sendCtrlAltDel(final MessageQueue messageQueue) {
-		messageQueue
-				.put(new KeyEventMessage(KeyEventListener.K_CTRL_LEFT, true));
-		messageQueue
-				.put(new KeyEventMessage(KeyEventListener.K_ALT_LEFT, true));
-		messageQueue.put(new KeyEventMessage(KeyEventListener.K_DELETE, true));
-		messageQueue.put(new KeyEventMessage(KeyEventListener.K_DELETE, false));
-		messageQueue
-				.put(new KeyEventMessage(KeyEventListener.K_ALT_LEFT, false));
-		messageQueue.put(new KeyEventMessage(KeyEventListener.K_CTRL_LEFT,
-				false));
+	private void sendCtrlAltDel(ProtocolContext context) {
+		context.sendMessage(new KeyEventMessage(Keymap.K_CTRL_LEFT, true));
+		context.sendMessage(new KeyEventMessage(Keymap.K_ALT_LEFT, true));
+		context.sendMessage(new KeyEventMessage(Keymap.K_DELETE, true));
+		context.sendMessage(new KeyEventMessage(Keymap.K_DELETE, false));
+		context.sendMessage(new KeyEventMessage(Keymap.K_ALT_LEFT, false));
+		context.sendMessage(new KeyEventMessage(Keymap.K_CTRL_LEFT, false));
 	}
 
-	private void sendWinKey(final MessageQueue messageQueue) {
-		messageQueue
-				.put(new KeyEventMessage(KeyEventListener.K_CTRL_LEFT, true));
-		messageQueue.put(new KeyEventMessage(KeyEventListener.K_ESCAPE, true));
-		messageQueue.put(new KeyEventMessage(KeyEventListener.K_ESCAPE, false));
-		messageQueue.put(new KeyEventMessage(KeyEventListener.K_CTRL_LEFT,
-				false));
+	private void sendWinKey(ProtocolContext context) {
+		context.sendMessage(new KeyEventMessage(Keymap.K_CTRL_LEFT, true));
+		context.sendMessage(new KeyEventMessage(Keymap.K_ESCAPE, true));
+		context.sendMessage(new KeyEventMessage(Keymap.K_ESCAPE, false));
+		context.sendMessage(new KeyEventMessage(Keymap.K_CTRL_LEFT, false));
 	}
 
 	@Override
@@ -794,6 +796,24 @@ public class ARViewer extends JApplet implements Runnable, IViewerSessionManager
 
 	@Override
 	public void windowDeactivated(WindowEvent e) { /* nop */
+	}
+
+	@SuppressWarnings("unused")
+	private static String ver() {
+		final InputStream mfStream = Viewer.class.getClassLoader()
+				.getResourceAsStream("META-INF/MANIFEST.MF");
+		if (null == mfStream) {
+			System.out.println("No Manifest file found.");
+			return "-1";
+		}
+		try {
+			Manifest mf = new Manifest();
+			mf.read(mfStream);
+			Attributes atts = mf.getMainAttributes();
+			return atts.getValue(Attributes.Name.IMPLEMENTATION_VERSION);
+		} catch (IOException e) {
+			return "-2";
+		}
 	}
 
 }
