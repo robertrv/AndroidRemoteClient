@@ -6,3 +6,4 @@ R.java
 *.setup
 bin/*
 *.class
+gradle.properties

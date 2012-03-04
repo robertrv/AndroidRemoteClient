@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jnlp spec="1.0+" codebase="http://mobilelab.uoc.edu/client/" href="AndroidRemote.jnlp">
+  <information>
+    <title>Android Remote Client</title>
+    <vendor>Uoc</vendor>
+    <homepage>http://mobilelab.uoc.edu/client/</homepage>
+    <description kind="one-line">Android Remote Client</description>
+    <desktop/>
+  </information>
+  <security>
+    <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="1.5+" href="http://java.sun.com/products/autodl/j2se"/>
+    <jar href="${name}-${version}.jar" main="true"/>
+	<jar href="ddmlib.jar"/>
+	<jar href="tightvnc-jviewer.jar"/>
+  </resources>
+  <application-desc
+    name="Android Remote Client"
+    main-class="${mainClassName}">
+  </application-desc>
+  <update check="background"/>
+</jnlp>

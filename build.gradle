@@ -1,0 +1,145 @@
+import com.sun.xml.internal.ws.transport.http.DeploymentDescriptorParser;
+
+import com.sun.xml.internal.ws.transport.http.DeploymentDescriptorParser;
+
+apply plugin:'java'
+apply plugin:'application'
+
+version = '2.3'
+
+mainClassName = "org.uoc.androidremote.client.main.Client"
+jnlpDirectory = 'build/jnlp'
+jnlpTemplate = 'src/main/jnlp/AndroidRemote.jnlp'
+keystoreFile = 'src/main/jnlp/uockeystore'
+keystoreAlias = 'uoc'
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+	sshAntTask
+}
+dependencies {
+	sshAntTask group: 'org.apache.ant', name: 'ant-jsch', version: '1.+'
+}
+
+dependencies {
+	compile fileTree(dir: 'libs', include: '*.jar')
+}
+
+jar {
+	manifest {
+		attributes("Implementation-Title": "Android Remote Client", "Version": version)
+	}
+}
+
+task transformJnlp << {
+	copy {
+		from jnlpTemplate
+		into jnlpDirectory
+		expand(project.properties)
+	}
+}
+
+task signJnlp << {
+
+	ant.signjar(alias: keystoreAlias,
+	keystore: keystoreFile,
+	storepass: keystorePassword,
+	destDir: jnlpDirectory,
+	keypass: keystorePassword) {
+		fileset(dir: libsDir) {
+			include(name: '*.jar')
+		}
+		fileset(dir: rootDir.toString()+"/libs") {
+			include(name: '*.jar')
+		}
+	}
+}
+
+
+
+signJnlp.dependsOn jar, transformJnlp
+
+task deploy(dependsOn: signJnlp) << {
+	description = 'Copies the resource result of signature to the UocServer.'
+	
+	ant.taskdef(
+		name: 'scp2',
+		classname:'org.apache.tools.ant.taskdefs.optional.ssh.Scp',
+		classpath: configurations.sshAntTask.asPath)
+	
+		// Invoke the scp Ant task. (Use gradle -i update to see the output of the Ant task.)
+		ant.scp2(
+			keyfile: '${user.home}/.ssh/id_rsa',
+			port: ssh_port,
+			verbose: 'true',
+			toDir: ssh_user + '@mobilelab.uoc.edu:/home/robert/betas/' + version){
+				fileset(dir: jnlpDirectory)
+			}
+}
+
+task update(dependsOn: signJnlp) << {
+	description = 'Update files on remote server.'
+
+	ant.taskdef(name: 'scp', classname: 'org.apache.tools.ant.taskdefs.optional.ssh.Scp',
+			classpath: configurations.sshAntTask.asPath)
+			
+	// Invoke the scp Ant task. (Use gradle -i update to see the output of the Ant task.)
+	ant.scp(todir: 'robert@mobilelab.uoc.edu:/home/robert/betas/2.3',
+			keyfile: '${user.home}/.ssh/id_rsa',
+			port:55055,
+			verbose: 'true') {
+		fileset(dir: 'build/jnlp/') {
+			include(name: '**/**')
+		}
+	}
+}
+
+defaultTasks 'clean', 'run'
+
+//jar.dependsOn 'copyJnlpJars'
+//build.dependsOn 'jnlpZip'
+//
+//def browserClasspath = []
+//
+//task copyJnlpJars(type: Sync, dependsOn: compileJava) {
+//	from configurations.compile.files
+//	eachFile fullJarNameExpander
+//	eachFile { browserClasspath.add it.name }
+//	into jnlpDirectory
+//}
+//
+//jar << {
+//	jarClasspath = ''
+//	browserClasspath.each { jarClasspath += it + ' ' }
+//	ant.jar(destfile: jar.archivePath, update:true) {
+//		delegate.manifest {
+//			attribute(name: 'Main-Class', value: mainClassName)
+//			attribute(name: 'Class-Path', value: jarClasspath)
+//		}
+//	}
+//} << {
+//	copy {
+//		from jar.archivePath
+//		into jnlpDirectory
+//	}
+//	browserClasspath.add jar.archivePath.name
+//	copy {
+//		from jnlpTemplate
+//		into jnlpDirectory
+//		filter {     expandClasspath(it, browserClasspath) }
+//		expand(project.properties)
+//	}
+//}
+//task jnlpZip(type: Zip, dependsOn: signJnlpJars) {
+//	appendix = 'jnlp'
+//
+//	from 'build/jnlp'
+//	from rootProject.file('LICENSE.txt')
+//
+//	into("${project.name}-${project.version}")
+//}
+//
+//artifacts { jnlp jnlpZip }

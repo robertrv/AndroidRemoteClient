@@ -1,0 +1,10 @@
+rootProject.name="AndroidRemote"
+/* Settings to be redefined in the gradle.properties file 
+ * 
+keystorePassword = 
+ssh_user = 
+ssh_password =
+ssh_port = 
+ssh_keyfile = 
+ssh_passprhase = 
+ */
