@@ -5,15 +5,16 @@
         header("Pragma: no-cache");
         header("Content-Type: application/x-java-jnlp-file");
         header("Content-disposition:attachment; filename=AndroidRemote.jnlp");
+        $server=$_SERVER["HTTP_HOST"];
         $vncPort=$_GET['vncPort'];
         $mngPort=$_GET['mngPort'];
 
 $script = '<?xml version="1.0" encoding="UTF-8"?>
-<jnlp spec="1.0+" codebase="http://mobilelab.uoc.edu/client/" href="AndroidRemote.jnlp">
+<jnlp spec="1.0+" codebase="http://'.$server.'/client/" href="AndroidRemote.jnlp">
   <information>
     <title>Android Remote Client</title>
     <vendor>Uoc</vendor>
-    <homepage>http://mobilelab.uoc.edu/client/</homepage>
+    <homepage>http://'.$server.'</homepage>
     <description kind="one-line">Android Remote Client</description>
     <desktop/>
   </information>
@@ -29,7 +30,7 @@ $script = '<?xml version="1.0" encoding="UTF-8"?>
   <application-desc
     name="Android Remote Client"
     main-class="org.uoc.androidremote.client.main.Client">
-    <argument>mobilelab.uoc.edu</argument> 
+    <argument>'.$server.'</argument> 
     <argument>'.$vncPort.'</argument> 
     <argument>'.$mngPort.'</argument>
   </application-desc>

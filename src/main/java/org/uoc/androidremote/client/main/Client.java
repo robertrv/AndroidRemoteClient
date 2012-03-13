@@ -152,15 +152,17 @@ public class Client extends JFrame {
 	 * Start.
 	 */
 	public void start() {
-		// this.setExtendedState(JFrame.MAXIMIZED_BOTH);
+		//this.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		this.setSize(new Dimension(1000, 1000));
 		JPanel mainPanel = new JPanel(new BorderLayout());
 
-		connectionPanel = new ConnectionPanel(this);
+		connectionPanel = new ConnectionPanel(this, getHost(),
+				String.valueOf(getPort()), String.valueOf(getGestionPort()));
 
 		mainPanel.add(connectionPanel, BorderLayout.NORTH);
 
-		JPanel centerPanel = new JPanel(new GridLayout(1, 2));
+		//JPanel centerPanel = new JPanel(new GridLayout(1, 2));
+		JPanel centerPanel = new JPanel(new BorderLayout());
 
 		JPanel vncContainer = new JPanel(new BorderLayout());
 		statusLabel = new JLabel(" ");
@@ -172,7 +174,7 @@ public class Client extends JFrame {
 		
 		JApplet vncPanel = vncViewer;
 		vncContainer.add(vncPanel, BorderLayout.CENTER);
-		centerPanel.add(vncContainer);
+		centerPanel.add(vncContainer, BorderLayout.CENTER);
 
 		JPanel gestionContainer = new JPanel(new BorderLayout());
 		JTabbedPane tabbedPane = new JTabbedPane();
@@ -186,7 +188,9 @@ public class Client extends JFrame {
 		tabbedPane.addTab("Funcionalidades en USB", usbPanel);
 		tabbedPane.addTab("Vista ADB", usbScreenPanel);
 		gestionContainer.add(tabbedPane, BorderLayout.CENTER);
-		centerPanel.add(gestionContainer);
+		gestionContainer.setMaximumSize(new Dimension(300,300));
+		gestionContainer.setPreferredSize(new Dimension(300,300));
+		centerPanel.add(gestionContainer, BorderLayout.EAST);
 		mainPanel.add(centerPanel, BorderLayout.CENTER);
 		this.add(mainPanel);
 		this.setVisible(true);
@@ -216,6 +220,18 @@ public class Client extends JFrame {
 	 */
 	public static void main(String[] args) {
 		Client c = new Client();
+		if (args.length>0) {
+			int idx = 0;
+			if (args.length>idx) {
+				c.setHost(args[idx++]);
+			}
+			if (args.length>idx) {
+				c.setPort(Integer.parseInt(args[idx++]));
+			}
+			if (args.length>idx) {
+				c.setGestionPort(Integer.parseInt(args[idx++]));
+			}
+		}
 		c.start();
 
 	}
@@ -400,10 +416,11 @@ public class Client extends JFrame {
 			return ins.readObject();
 		} catch (IOException e) {
 			logger.log(Level.SEVERE,e.getMessage(), e);
+			throw new RuntimeException(e);
 		} catch (ClassNotFoundException e) {
 			logger.log(Level.SEVERE,e.getMessage(), e);
+			throw new RuntimeException(e);
 		}
-		return null;
 	}
 
 	public void showConnectionClosed() {

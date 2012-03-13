@@ -10,6 +10,7 @@ version = '2.3'
 mainClassName = "org.uoc.androidremote.client.main.Client"
 jnlpDirectory = 'build/jnlp'
 jnlpTemplate = 'src/main/jnlp/AndroidRemote.jnlp'
+phpDirectory = 'src/main/jnlp/'
 keystoreFile = 'src/main/jnlp/uockeystore'
 keystoreAlias = 'uoc'
 
@@ -43,7 +44,8 @@ task transformJnlp << {
 }
 
 task signJnlp << {
-
+	description = 'Prepare jnlp deployment on local build, mainly signing jar files.'
+	
 	ant.signjar(alias: keystoreAlias,
 	keystore: keystoreFile,
 	storepass: keystorePassword,
@@ -57,8 +59,6 @@ task signJnlp << {
 		}
 	}
 }
-
-
 
 signJnlp.dependsOn jar, transformJnlp
 
@@ -75,9 +75,20 @@ task deploy(dependsOn: signJnlp) << {
 			keyfile: '${user.home}/.ssh/id_rsa',
 			port: ssh_port,
 			verbose: 'true',
-			toDir: ssh_user + '@mobilelab.uoc.edu:/home/robert/betas/' + version){
+			toDir: ssh_user + '@'+server+':~/betas/' + version){
 				fileset(dir: jnlpDirectory)
 			}
+		// Copy the *.php files from the php folder
+		ant.scp2(
+			keyfile: '${user.home}/.ssh/id_rsa',
+			port: ssh_port,
+			verbose: 'true',
+			toDir: ssh_user + '@'+server+':/var/www/mrbs/'){
+				fileset(dir: phpDirectory){
+					include(name: '**.php')
+				}
+			}
+
 }
 
 defaultTasks 'clean', 'run'

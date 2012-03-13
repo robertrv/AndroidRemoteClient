@@ -18,24 +18,30 @@ package org.uoc.androidremote.client.ui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.uoc.androidremote.client.main.Client;
 import org.uoc.androidremote.operations.AndroidApplication;
-import org.uoc.androidremote.operations.LocationOperation;
 import org.uoc.androidremote.operations.AndroidRunningApplication;
 import org.uoc.androidremote.operations.AndroidService;
 import org.uoc.androidremote.operations.ApplicationsInstalled;
 import org.uoc.androidremote.operations.ApplicationsRunning;
+import org.uoc.androidremote.operations.InstallApplication;
+import org.uoc.androidremote.operations.LocationOperation;
 import org.uoc.androidremote.operations.Operation;
 import org.uoc.androidremote.operations.Reboot;
 import org.uoc.androidremote.operations.ServicesRunning;
@@ -178,6 +184,39 @@ public class NetworkPanel extends JPanel {
 		add(rebootButton);
 		resultReboot.setText("");
 		add(resultReboot);
+		
+		JButton installApplication = new JButton("Install Application");
+		final JLabel installApplicationLabel = new JLabel();
+		installApplicationLabel.setText("");
+		installApplication.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				// select file
+				JFileChooser chooser = new JFileChooser();
+				FileNameExtensionFilter filter = new FileNameExtensionFilter(
+						"Android applictions", "apk");
+				chooser.addChoosableFileFilter(filter);
+				int returnValue = chooser.showOpenDialog(NetworkPanel.this);
+				if (returnValue == JFileChooser.APPROVE_OPTION) {
+					File file = chooser.getSelectedFile();
+					InstallApplication iApp;
+					try {
+						iApp = new InstallApplication(file);
+						if (client.initSockets()) {
+							Operation result = (Operation) client
+									.request(iApp);
+							installApplicationLabel.setText(result.getMessage());
+						}
+					} catch (IOException e) {
+						throw new RuntimeException("Error trying to open apk file",e);
+					}
+				}
+			}
+		});
+		
+		add(installApplication);
+		add(installApplicationLabel);
 
 		queryAppsInstalledButton = new JButton("Aplicaciones instaladas");
 		queryAppsInstalledButton.addActionListener(new ActionListener() {

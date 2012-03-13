@@ -43,8 +43,6 @@ import com.glavsoft.viewer.ARViewer;
  */
 public class ConnectionPanel extends JPanel {
 
-	private static final String DEFAULT_IP = "127.0.0.1";
-
 	private static final long serialVersionUID = 1L;
 	
 	private final JTextField hostEntry = new JTextField(20);
@@ -65,14 +63,8 @@ public class ConnectionPanel extends JPanel {
 	
 	private boolean connected = false;
 
-	/**
-	 * Instantiates a new connection panel.
-	 * 
-	 * @param c
-	 *            the c
-	 */
-	public ConnectionPanel(Client c) {
-		this.client = c;
+	public ConnectionPanel(Client c, final String host, String vncPort, String mngPort) {
+		client = c;
 		ButtonGroup group = new ButtonGroup();
 		usbConn = new JRadioButton("USB");
 		netConn = new JRadioButton("Network");
@@ -82,7 +74,7 @@ public class ConnectionPanel extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				hostEntry.setText(DEFAULT_IP);
+				hostEntry.setText(host);
 				hostEntry.setEnabled(false);
 			}
 		});
@@ -90,7 +82,7 @@ public class ConnectionPanel extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				hostEntry.setText(DEFAULT_IP);
+				hostEntry.setText(host);
 				hostEntry.setEnabled(true);
 			}
 		});
@@ -98,13 +90,13 @@ public class ConnectionPanel extends JPanel {
 		this.add(usbConn);
 		this.add(netConn);
 		this.add(new JLabel("Host:"));
-		hostEntry.setText(DEFAULT_IP);
+		hostEntry.setText(host);
 		this.add(hostEntry);
 		this.add(new JLabel("VNC Port:"));
-		portEntry.setText("5901");
+		portEntry.setText(vncPort);
 		this.add(portEntry);
 		this.add(new JLabel("Gestion Port:"));
-		gestionPortEntry.setText("5000");
+		gestionPortEntry.setText(mngPort);
 		this.add(gestionPortEntry);
 		buttonConnect = new JButton("Conectar");
 		buttonConnect.addActionListener(new ActionListener() {

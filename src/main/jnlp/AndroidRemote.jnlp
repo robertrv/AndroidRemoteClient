@@ -7,6 +7,8 @@
     <description kind="one-line">Android Remote Client</description>
     <desktop/>
   </information>
+  <update check="always" policy="always" />
+  
   <security>
     <all-permissions/>
   </security>
@@ -19,6 +21,9 @@
   <application-desc
     name="Android Remote Client"
     main-class="${mainClassName}">
+    <argument>mobilelab.uoc.edu</argument> 
+    <argument>5910</argument> 
+    <argument>5010</argument>
   </application-desc>
   <update check="background"/>
 </jnlp>
