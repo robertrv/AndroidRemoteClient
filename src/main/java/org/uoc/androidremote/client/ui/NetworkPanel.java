@@ -19,7 +19,6 @@ package org.uoc.androidremote.client.ui;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
@@ -29,6 +28,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -43,6 +43,8 @@ import org.uoc.androidremote.operations.ApplicationsRunning;
 import org.uoc.androidremote.operations.InstallApplication;
 import org.uoc.androidremote.operations.LocationOperation;
 import org.uoc.androidremote.operations.Operation;
+import org.uoc.androidremote.operations.OperationResult;
+import org.uoc.androidremote.operations.OperationResult.Type;
 import org.uoc.androidremote.operations.Reboot;
 import org.uoc.androidremote.operations.ServicesRunning;
 
@@ -73,6 +75,7 @@ public class NetworkPanel extends JPanel {
 	private JButton locationButton;
 	
 	private JButton rebootButton;
+	private JButton installApplicationButton;
 
 	private static final int IMPORTANCE_BACKGROUND = 400;
 	private static final int IMPORTANCE_EMPTY = 500;
@@ -185,37 +188,19 @@ public class NetworkPanel extends JPanel {
 		resultReboot.setText("");
 		add(resultReboot);
 		
-		JButton installApplication = new JButton("Install Application");
+		installApplicationButton = new JButton("Instalar aplicación");
 		final JLabel installApplicationLabel = new JLabel();
 		installApplicationLabel.setText("");
-		installApplication.addActionListener(new ActionListener() {
+		installApplicationButton.addActionListener(new ActionListener() {
 			
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				// select file
-				JFileChooser chooser = new JFileChooser();
-				FileNameExtensionFilter filter = new FileNameExtensionFilter(
-						"Android applictions", "apk");
-				chooser.addChoosableFileFilter(filter);
-				int returnValue = chooser.showOpenDialog(NetworkPanel.this);
-				if (returnValue == JFileChooser.APPROVE_OPTION) {
-					File file = chooser.getSelectedFile();
-					InstallApplication iApp;
-					try {
-						iApp = new InstallApplication(file);
-						if (client.initSockets()) {
-							Operation result = (Operation) client
-									.request(iApp);
-							installApplicationLabel.setText(result.getMessage());
-						}
-					} catch (IOException e) {
-						throw new RuntimeException("Error trying to open apk file",e);
-					}
-				}
+				NetworkPanel.this.installApk(installApplicationLabel);
 			}
+
 		});
 		
-		add(installApplication);
+		add(installApplicationButton);
 		add(installApplicationLabel);
 
 		queryAppsInstalledButton = new JButton("Aplicaciones instaladas");
@@ -339,6 +324,36 @@ public class NetworkPanel extends JPanel {
 		add(resultPaneServices);
 	}
 	
+
+	private void installApk(final JLabel installApplicationLabel) {
+		installApplicationLabel.setText("");
+		// select file
+		JFileChooser chooser = new JFileChooser();
+		FileNameExtensionFilter filter = new FileNameExtensionFilter(
+				"Android applictions", "apk");
+		chooser.addChoosableFileFilter(filter);
+		int returnValue = chooser.showOpenDialog(NetworkPanel.this);
+		if (returnValue == JFileChooser.APPROVE_OPTION) {
+			File file = chooser.getSelectedFile();
+			InstallApplication iApp;
+			try {
+				iApp = new InstallApplication(file);
+				if (client.initSockets()) {
+					OperationResult result = (OperationResult) client
+							.request(iApp);
+					if (result.getType() == Type.OK) {
+						installApplicationLabel.setText(result.getMessage());								
+					} else {
+						JOptionPane.showMessageDialog(
+								NetworkPanel.this, result.toString());
+					}
+				}
+			} catch (IOException e) {
+				throw new RuntimeException("Error trying to open apk file",e);
+			}
+		}
+	}
+	
 	private String getImportanceText(int imp) {
 		switch (imp) {
 			case IMPORTANCE_BACKGROUND:
@@ -363,5 +378,6 @@ public class NetworkPanel extends JPanel {
 		queryAppsInstalledButton.setEnabled(enabled);
 		batteryButton.setEnabled(enabled);
 		rebootButton.setEnabled(enabled);
+		installApplicationButton.setEnabled(enabled);
 	}
 }

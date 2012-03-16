@@ -58,11 +58,11 @@ import com.glavsoft.viewer.ARViewer;
 public class Client extends JFrame {
 
 	/**
-	 * Simple class to handle all the logger from the vnc viewer and show it 
+	 * Simple class to handle all the logger from the vnc viewer and show it
 	 * inside our swing layout.
 	 * 
 	 * @author roberrv[at]gmail.com
-	 *
+	 * 
 	 */
 	private final class StatusHandler extends Handler {
 		private final JLabel statusLabel;
@@ -89,13 +89,13 @@ public class Client extends JFrame {
 					// remove after 15 seconds, if it holds my message yet
 					Timer timer = new Timer();
 					timer.schedule(new TimerTask() {
-							@Override public void run() {
-								statusLabel.setText(" ");
-							}
-						},
-						15 * 1000); // wait 15 seconds						
+						@Override
+						public void run() {
+							statusLabel.setText(" ");
+						}
+					}, 15 * 1000); // wait 15 seconds
 				}
-				
+
 			});
 		}
 
@@ -109,28 +109,29 @@ public class Client extends JFrame {
 	}
 
 	private static final long serialVersionUID = 1L;
-	
+
 	private final ARViewer vncViewer = new ARViewer();
-	
+
 	private NetworkPanel networkPanel;
-	
+
 	private USBPanel usbPanel;
-	
+
 	private USBScreenPanel usbScreenPanel;
 
-	private JLabel gestionConnStatus;	/** The device. */
+	private JLabel gestionConnStatus;
+	/** The device. */
 	private AndroidDevice device;
-	
+
 	private int gestionPort = 5000;
-	
+
 	private String host = "localhost";
-	
+
 	private int port = 0;
-	
+
 	private Socket envia;
-	
+
 	private ObjectOutputStream salida;
-	
+
 	private ObjectInputStream ins;
 
 	private ConnectionPanel connectionPanel;
@@ -138,8 +139,9 @@ public class Client extends JFrame {
 	private JLabel statusLabel;
 
 	private static final String MNG_STATUS = "Management - State: ";
-	
-	private static final Logger logger = Logger.getLogger(Client.class.getName());
+
+	private static final Logger logger = Logger.getLogger(Client.class
+			.getName());
 
 	/**
 	 * Instantiates a new client.
@@ -152,7 +154,7 @@ public class Client extends JFrame {
 	 * Start.
 	 */
 	public void start() {
-		//this.setExtendedState(JFrame.MAXIMIZED_BOTH);
+		// this.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		this.setSize(new Dimension(1000, 1000));
 		JPanel mainPanel = new JPanel(new BorderLayout());
 
@@ -161,7 +163,7 @@ public class Client extends JFrame {
 
 		mainPanel.add(connectionPanel, BorderLayout.NORTH);
 
-		//JPanel centerPanel = new JPanel(new GridLayout(1, 2));
+		// JPanel centerPanel = new JPanel(new GridLayout(1, 2));
 		JPanel centerPanel = new JPanel(new BorderLayout());
 
 		JPanel vncContainer = new JPanel(new BorderLayout());
@@ -169,9 +171,9 @@ public class Client extends JFrame {
 		StatusHandler logHandler = new StatusHandler(statusLabel);
 		vncViewer.addLoggerHandler(logHandler);
 		logger.addHandler(logHandler);
-		
+
 		vncContainer.add(statusLabel, BorderLayout.NORTH);
-		
+
 		JApplet vncPanel = vncViewer;
 		vncContainer.add(vncPanel, BorderLayout.CENTER);
 		centerPanel.add(vncContainer, BorderLayout.CENTER);
@@ -185,11 +187,11 @@ public class Client extends JFrame {
 		usbScreenPanel = new USBScreenPanel(this);
 
 		tabbedPane.addTab("Funcionalidades en red", networkPanel);
-		tabbedPane.addTab("Funcionalidades en USB", usbPanel);
-		tabbedPane.addTab("Vista ADB", usbScreenPanel);
+//		tabbedPane.addTab("Funcionalidades en USB", usbPanel);
+//		tabbedPane.addTab("Vista ADB", usbScreenPanel);
 		gestionContainer.add(tabbedPane, BorderLayout.CENTER);
-		gestionContainer.setMaximumSize(new Dimension(300,300));
-		gestionContainer.setPreferredSize(new Dimension(300,300));
+		gestionContainer.setMaximumSize(new Dimension(300, 300));
+		gestionContainer.setPreferredSize(new Dimension(300, 300));
 		centerPanel.add(gestionContainer, BorderLayout.EAST);
 		mainPanel.add(centerPanel, BorderLayout.CENTER);
 		this.add(mainPanel);
@@ -197,8 +199,9 @@ public class Client extends JFrame {
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		manageNetworkFunctions(false);
 		manageUSBFunctions(false);
-		
-		// This handler manages all those exceptions which are not explicitly handled
+
+		// This handler manages all those exceptions which are not explicitly
+		// handled
 		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
 			@Override
 			public void uncaughtException(Thread t, Throwable e) {
@@ -220,15 +223,15 @@ public class Client extends JFrame {
 	 */
 	public static void main(String[] args) {
 		Client c = new Client();
-		if (args.length>0) {
+		if (args.length > 0) {
 			int idx = 0;
-			if (args.length>idx) {
+			if (args.length > idx) {
 				c.setHost(args[idx++]);
 			}
-			if (args.length>idx) {
+			if (args.length > idx) {
 				c.setPort(Integer.parseInt(args[idx++]));
 			}
-			if (args.length>idx) {
+			if (args.length > idx) {
 				c.setGestionPort(Integer.parseInt(args[idx++]));
 			}
 		}
@@ -260,8 +263,7 @@ public class Client extends JFrame {
 			System.err.println(e.getMessage());
 			gestionConnStatus.setText(MNG_STATUS + "connection error");
 		} catch (ConnectException e) {
-			gestionConnStatus
-					.setText(MNG_STATUS + "remote server stopped");
+			gestionConnStatus.setText(MNG_STATUS + "remote server stopped");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			gestionConnStatus.setText(MNG_STATUS + "connection error");
@@ -330,20 +332,19 @@ public class Client extends JFrame {
 				"Cliente: AndroidRemoteClient");
 
 		request(o);
-}
-	
+	}
+
 	public void closeConnection() {
 		if (salida == null) {
 			throw new IllegalStateException(
 					"Network error, manangment server down!");
 		}
 		if (initSockets()) {
-			request(new Operation(Operation.OP_CLOSE, 
-					"disconnecting from client AndroidRemoteClient"));			
+			request(new Operation(Operation.OP_CLOSE,
+					"disconnecting from client AndroidRemoteClient"));
 		}
 		gestionConnStatus.setText(MNG_STATUS + "disconnected");
 	}
-
 
 	/**
 	 * Gets the gestion port.
@@ -415,10 +416,10 @@ public class Client extends JFrame {
 			salida.flush();
 			return ins.readObject();
 		} catch (IOException e) {
-			logger.log(Level.SEVERE,e.getMessage(), e);
+			logger.log(Level.SEVERE, e.getMessage(), e);
 			throw new RuntimeException(e);
 		} catch (ClassNotFoundException e) {
-			logger.log(Level.SEVERE,e.getMessage(), e);
+			logger.log(Level.SEVERE, e.getMessage(), e);
 			throw new RuntimeException(e);
 		}
 	}
@@ -426,5 +427,5 @@ public class Client extends JFrame {
 	public void showConnectionClosed() {
 		statusLabel.setText("Disconnected from server");
 	}
-	
+
 }
