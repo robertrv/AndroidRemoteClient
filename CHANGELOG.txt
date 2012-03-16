@@ -1,0 +1,27 @@
+Relase Notes
+============
+2.4
+---
+Remote install application implemented.
+
+2.3
+---
+Internal refactor to get signing process better managed, via graddle
+2.2
+---
+ * New tight vnc version (2.1).
+2.1
+---
+ * Refactor of the current library to connect through VNC, using the new 
+ tightvnc version (2.0.4) as a library, not directly the code. Still needed to
+  copy one class of code, named ARViewer but clearly identified where the 
+  changes are so we can easily upgrade to a new release.
+
+2.0 
+---
+ * Refactor to add a exception manager (which I think is not properly working)
+ * Added Reboot operation and manage the case of location not properly setted (normally happens on device)
+  
+1.0 
+---
+First release of the software comming from http://code.google.com/p/androidremote-client/
