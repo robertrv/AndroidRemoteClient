@@ -19,7 +19,6 @@ package org.uoc.androidremote.client.main;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.GridLayout;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -28,6 +27,9 @@ import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Handler;
@@ -138,6 +140,10 @@ public class Client extends JFrame {
 
 	private JLabel statusLabel;
 
+	private Date closeDate;
+
+	private Date startDate;
+
 	private static final String MNG_STATUS = "Management - State: ";
 
 	private static final Logger logger = Logger.getLogger(Client.class
@@ -159,7 +165,8 @@ public class Client extends JFrame {
 		JPanel mainPanel = new JPanel(new BorderLayout());
 
 		connectionPanel = new ConnectionPanel(this, getHost(),
-				String.valueOf(getPort()), String.valueOf(getGestionPort()));
+				String.valueOf(getPort()), String.valueOf(getGestionPort()),
+				this.startDate, this.closeDate);
 
 		mainPanel.add(connectionPanel, BorderLayout.NORTH);
 
@@ -217,11 +224,29 @@ public class Client extends JFrame {
 
 	/**
 	 * The main method.
+	 * 	the order of arguments is:
+	 * <pre>
+	 * 		java Client HOST VNC_PORT MNG_PORT USE_LIMIT
+	 * </pre>
+	 * <p>
+	 * 		<ul>
+	 * 		<li>HOST has to be a reachable host</li>
+	 * 		<li>VNC_PORT a number</li>
+	 * 		<li>MNG_PORT a number</li>
+	 * 		<li>USE_LIMIT a date time element in the format:<pre>
+	 * 			<code>dd/MM/yyyy-HH:mm</code></pre> 
+	 * 		</li>
+	 * 		</ul>
+	 * </p>
 	 * 
-	 * @param args
-	 *            the arguments
+	 * <p>
+	 * This is also used when we start application through java web start.
+	 * </p>
+	 * @throws ParseException 
+	 * 	In case of an invalid date through the parameter
+	 * 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws ParseException {
 		Client c = new Client();
 		if (args.length > 0) {
 			int idx = 0;
@@ -234,9 +259,28 @@ public class Client extends JFrame {
 			if (args.length > idx) {
 				c.setGestionPort(Integer.parseInt(args[idx++]));
 			}
+			if (args.length > idx) {
+				String dateStr = args[idx++];
+				SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy-HH:mm");
+				c.setStartDate(sdf.parse(dateStr));
+			}
+			if (args.length > idx) {
+				String dateStr = args[idx++];
+				SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy-HH:mm");
+				c.setCloseDate(sdf.parse(dateStr));
+			}
 		}
 		c.start();
 
+	}
+
+	private void setStartDate(Date date) {
+		startDate = date;
+	}
+
+	private void setCloseDate(Date date) {
+		closeDate = date;
+		
 	}
 
 	/**
@@ -426,6 +470,10 @@ public class Client extends JFrame {
 
 	public void showConnectionClosed() {
 		statusLabel.setText("Disconnected from server");
+	}
+	
+	public void showMessage(String message){
+		JOptionPane.showMessageDialog(this, message);		
 	}
 
 }

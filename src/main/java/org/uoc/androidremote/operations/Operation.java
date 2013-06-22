@@ -33,6 +33,7 @@ public class Operation implements Serializable {
     public static final int OP_BATTERY_LEVEL = 6;
     public static final int OP_REBOOT = 7;
     public static final int OP_INSTALL_APPLICATION = 8;
+    public static final int OP_ADVICE_SESSION_END = 9;
     
     private static final long serialVersionUID = 1L;
     

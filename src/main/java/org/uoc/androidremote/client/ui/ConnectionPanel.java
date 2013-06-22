@@ -18,8 +18,12 @@ package org.uoc.androidremote.client.ui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -30,6 +34,7 @@ import javax.swing.JTextField;
 
 import org.uoc.androidremote.client.main.Client;
 import org.uoc.androidremote.client.structures.AndroidDevice;
+import org.uoc.androidremote.operations.Operation;
 
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.IDevice;
@@ -44,6 +49,7 @@ import com.glavsoft.viewer.ARViewer;
 public class ConnectionPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
+	private static final int SECONDS_TO_ADVICE = 5*60; // 5 minutes
 	
 	private final JTextField hostEntry = new JTextField(20);
 	
@@ -62,9 +68,15 @@ public class ConnectionPanel extends JPanel {
 	private static final String TO_DISCONNECT = "Desconectar";
 	
 	private boolean connected = false;
+	
+	private Date closeDate;
+	private Date startDate;
 
-	public ConnectionPanel(Client c, final String host, String vncPort, String mngPort) {
+	public ConnectionPanel(Client c, final String host, String vncPort,
+			String mngPort, Date startDate, Date closeDate) {
 		client = c;
+		this.startDate = startDate;
+		this.closeDate = closeDate;
 		ButtonGroup group = new ButtonGroup();
 		usbConn = new JRadioButton("USB");
 		netConn = new JRadioButton("Network");
@@ -87,8 +99,8 @@ public class ConnectionPanel extends JPanel {
 			}
 		});
 		netConn.setSelected(true);
-		this.add(usbConn);
-		this.add(netConn);
+//		this.add(usbConn);
+//		this.add(netConn);
 		this.add(new JLabel("Host:"));
 		hostEntry.setText(host);
 		this.add(hostEntry);
@@ -123,7 +135,26 @@ public class ConnectionPanel extends JPanel {
 		client.showConnectionClosed();
 	}
 	
+	private boolean isInTime() {
+		Date now = Calendar.getInstance().getTime();
+		
+		if (startDate != null && now.before(startDate)) {
+			return false;
+		}
+		
+		if (closeDate != null && now.after(closeDate)) {
+			return false;
+		}
+		
+		return true;
+	}
+	
 	private void connect() {
+		if (!isInTime()) {
+			throw new RuntimeException(
+					"You cannot use Client now. Your time is from " + startDate
+							+ " to " + closeDate);
+		}
 		client.setHost(hostEntry.getText());
 		String strVNCPort = portEntry.getText();
 		int vncPort = 0;
@@ -220,8 +251,44 @@ public class ConnectionPanel extends JPanel {
 		}
 	}
 	
+	private boolean hasCloseDate() {
+		return closeDate != null;
+	}
+	
 	public void setConnected(boolean connected) {
 		this.connected = connected;
 		buttonConnect.setText(connected ?TO_DISCONNECT:TO_CONNECT);
+		// prepare timer to disconnect after certain time
+		if (connected && hasCloseDate()) {			
+			Timer stopTimer = new Timer();
+			stopTimer.schedule(new TimerTask() {
+				
+				@Override
+				public void run() {
+					client.request(new Operation(
+							Operation.OP_ADVICE_SESSION_END, ""));
+					disconnect();
+					ConnectionPanel.this.client
+							.showMessage("Disconnected due time is finished!");
+				}
+			}, closeDate);
+			
+			Date toAdviceDate = new Date(closeDate.getTime() - SECONDS_TO_ADVICE*1000);
+			
+			
+			stopTimer.schedule(new TimerTask() {
+				
+				@Override
+				public void run() {
+					ConnectionPanel.this.client
+							.showMessage("Your sessions is about to expire !! Will expire at: "
+									+ closeDate);
+				}
+			}, toAdviceDate);
+			
+			
+		}
+		
+		
 	}
 }

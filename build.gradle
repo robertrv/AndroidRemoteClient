@@ -56,7 +56,7 @@ task signJnlp << {
 	}
 }
 
-signJnlp.dependsOn jar, transformJnlp
+signJnlp.dependsOn clean, jar, transformJnlp
 
 task deploy(dependsOn: signJnlp) << {
 	description = 'Copies the resource result of signature to the UocServer.'
